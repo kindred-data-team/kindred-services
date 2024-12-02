@@ -10,6 +10,16 @@ This is a simple RESTful API project built with Rust, using the `axum` web frame
 
 ## Project Structure
 
+├── src/ 
+│   ├── models/   
+│   ├── api/  
+│   ├── routes/  
+│   ├── repository/  
+│   ├── db/  
+│   ├── constants/  
+│   └── main.rs 
+└── Cargo.toml 
+
 - `models/`: Contains data models for the application.
 - `api/`: Includes API-related logic and handlers.
 - `routes/`: Defines the API routes (currently including vaccine-related routes).
