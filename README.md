@@ -41,8 +41,8 @@ This is a simple RESTful API project built with Rust, using the `axum` web frame
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/rust-api-project.git
-cd rust-api-project
+https://github.com/kindred-data-team/kindred-services.git
+cd kindred-services
 ```
 
 ### Install Dependencies
