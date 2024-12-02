@@ -3,7 +3,7 @@ use tokio_postgres::Error;
 use crate::models::vaccine::Vaccine;
 
 pub async fn insert_vaccine(vaccine: &Vaccine) -> Result<(), Error> {
-    let client = create_db_connection().await?; // Async DB connection
+    let client = create_db_connection().await?;
     client.execute(
         "INSERT INTO vaccines (name, brand, details, for_whom, price, number_of_dose, code, shopify_id, shopify_sku, shopify_variant_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
         &[&vaccine.name, 
@@ -16,15 +16,15 @@ pub async fn insert_vaccine(vaccine: &Vaccine) -> Result<(), Error> {
           &vaccine.shopify_id, 
           &vaccine.shopify_sku, 
           &vaccine.shopify_variant_id]
-    ).await?; // Async query execution
+    ).await?; 
     Ok(())
 }
 
 pub async fn get_vaccine_by_id(id: i32) -> Result<Vaccine, Error> {
-    let  client = create_db_connection().await?; // Async DB connection
+    let  client = create_db_connection().await?; 
     let row = client.query_one(
         "SELECT * FROM vaccines WHERE id = $1", &[&id]
-    ).await?; // Async query execution
+    ).await?; 
     Ok(Vaccine {
         id: row.get(0),
         name: row.get(1),
@@ -41,8 +41,8 @@ pub async fn get_vaccine_by_id(id: i32) -> Result<Vaccine, Error> {
 }
 
 pub async fn get_all_vaccines() -> Result<Vec<Vaccine>, Error> {
-    let  client = create_db_connection().await?; // Async DB connection
-    let rows = client.query("SELECT * FROM vaccines", &[]).await?; // Async query execution
+    let  client = create_db_connection().await?; 
+    let rows = client.query("SELECT * FROM vaccines", &[]).await?;
 
     let vaccines: Vec<Vaccine> = rows.iter().map(|row| Vaccine {
         id: row.get(0),
@@ -62,7 +62,7 @@ pub async fn get_all_vaccines() -> Result<Vec<Vaccine>, Error> {
 }
 
 pub async fn update_vaccine(id: i32, vaccine: &Vaccine) -> Result<(), Error> {
-    let  client = create_db_connection().await?; // Async DB connection
+    let  client = create_db_connection().await?; 
     client.execute(
         "UPDATE vaccines SET name = $2, brand = $3, details = $4, for_whom = $5, price = $6, number_of_dose = $7, code = $8, shopify_id = $9, shopify_sku = $10, shopify_variant_id = $11 WHERE id = $1",
         &[&id, 
@@ -76,12 +76,12 @@ pub async fn update_vaccine(id: i32, vaccine: &Vaccine) -> Result<(), Error> {
           &vaccine.shopify_id, 
           &vaccine.shopify_sku, 
           &vaccine.shopify_variant_id]
-    ).await?; // Async query execution
+    ).await?; 
     Ok(())
 }
 
 pub async fn delete_vaccine(id: i32) -> Result<(), Error> {
-    let  client = create_db_connection().await?; // Async DB connection
-    client.execute("DELETE FROM vaccines WHERE id = $1", &[&id]).await?; // Async query execution
+    let  client = create_db_connection().await?;
+    client.execute("DELETE FROM vaccines WHERE id = $1", &[&id]).await?; 
     Ok(()) 
 }

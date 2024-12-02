@@ -15,9 +15,8 @@ pub struct Vaccine {
     pub shopify_variant_id: String,
 }
 
-// Implement methods for the Vaccine struct
+
 impl Vaccine {
-    // Constructor method to create a new Vaccine instance
     pub fn new(
         id: Option<i32>,
         name: String,
@@ -46,6 +45,5 @@ impl Vaccine {
         }
     }
 
-    // A method to get a summary of the vaccine information
    
 }
