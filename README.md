@@ -1,6 +1,6 @@
-# Rust API Project
+# Kindred Microservice
 
-This is a simple RESTful API project built with Rust, using the `axum` web framework for handling HTTP requests and `tokio` for asynchronous runtime.
+This microservice is built with Rust, using the `axum` web framework for handling HTTP requests and `tokio` for asynchronous runtime.
 
 ## Features
 
