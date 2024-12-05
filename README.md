@@ -1,12 +1,13 @@
 # Kindred Microservice
 
-This microservice is built with Rust, using the `axum` web framework for handling HTTP requests and `tokio` for asynchronous runtime.
+This microservice is built with Rust, using the actix-web framework for handling HTTP requests and tokio for asynchronous runtime. It connects to a MySQL database using sqlx.
 
 ## Features
 
-- Uses `axum` to define routes and handle HTTP requests.
-- Asynchronous server with `tokio` to handle concurrent operations.
-- Organized project structure with separate modules for models, routes, repository, and constants.
+-Actix-Web Framework: A powerful web framework for building scalable APIs.
+-Database Integration: Uses sqlx for interacting with a MySQL database.
+-Middleware Support: Includes custom middleware for logging and error handling.
+-Organized Architecture: Clean separation of concerns across modules.
 
 ## Project Structure
 ```
@@ -14,9 +15,10 @@ This microservice is built with Rust, using the `axum` web framework for handlin
 │   ├── models/   
 │   ├── api/  
 │   ├── routes/  
-│   ├── repository/  
+│   ├── repository/
+│   ├── middleware/  
 │   ├── db/  
-│   ├── constants/  
+│   ├── config/  
 │   └── main.rs 
 └── Cargo.toml 
 ```
@@ -25,16 +27,17 @@ This microservice is built with Rust, using the `axum` web framework for handlin
 - `routes/`: Defines the API routes (currently including vaccine-related routes).
 - `repository/`: Handles database interactions or data storage.
 - `db/`: Contains database connection and setup logic.
-- `constants/`: Stores constant values used throughout the project.
+- `config/`: Manages application configuration.
+- `config/`: Custom middleware for logging.
 - `main.rs`: Entry point that starts the HTTP server and sets up routes.
 
 ## Requirements
 
-- Rust 1.60 or higher
+- Rust 1.70 or higher
 - Dependencies:
-  - `axum`: Web framework for Rust.
+  - `actix-web`: Web framework for Rust.
   - `tokio`: Asynchronous runtime.
-  - `axum-server`: For binding and running the server.
+  - `sqlx`: Async database toolkit with compile-time query checking.
 
 ## Getting Started
 
@@ -60,4 +63,4 @@ Start the server with the following command:
 ```
 cargo run
 ```
-This will start the server on http://localhost:8080.
+This will start the server on http://127.0.0.1:8080.
