@@ -25,7 +25,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
         .wrap(Logger)
-            .service(vaccine_routes(pool_data.clone())) // Pass the pool to vaccine_routes
+            .service(vaccine_routes(pool_data.clone())) 
     })
     .bind((host, port.parse::<u16>().unwrap()))?
     .run()
