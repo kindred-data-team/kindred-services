@@ -4,10 +4,10 @@ This microservice is built with Rust, using the actix-web framework for handling
 
 ## Features
 
--Actix-Web Framework: A powerful web framework for building scalable APIs.
--Database Integration: Uses sqlx for interacting with a MySQL database.
--Middleware Support: Includes custom middleware for logging and error handling.
--Organized Architecture: Clean separation of concerns across modules.
+- Actix-Web Framework: A powerful web framework for building scalable APIs.
+- Database Integration: Uses sqlx for interacting with a MySQL database.
+- Middleware Support: Includes custom middleware for logging and error handling.
+- Organized Architecture: Clean separation of concerns across modules.
 
 ## Project Structure
 ```
