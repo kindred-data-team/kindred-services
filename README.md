@@ -28,7 +28,7 @@ This microservice is built with Rust, using the actix-web framework for handling
 - `repository/`: Handles database interactions or data storage.
 - `db/`: Contains database connection and setup logic.
 - `config/`: Manages application configuration.
-- `config/`: Custom middleware for logging.
+- `middleware/`: Custom middleware for logging.
 - `main.rs`: Entry point that starts the HTTP server and sets up routes.
 
 ## Requirements
