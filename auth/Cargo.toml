@@ -1,0 +1,28 @@
+[package]
+name = "kindred-auth-service"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-rt = "2.10.0"
+actix-service = "2.0.2"
+actix-web = "4.9.0"
+dotenv = "0.15.0"
+futures = "0.3.31"
+futures-util = "0.3.31"
+serde = { version = "1.0.217", features = ["derive"] }
+sqlx = { version = "0.7", features = ["postgres", "runtime-tokio-rustls", "chrono", "uuid"] }
+tokio = { version = "1", features = ["full"] }
+uuid = { version = "0.8.2", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+rand = "0.8"
+diesel = { version = "1.4.4", features = ["postgres", "chrono", "uuidv07"] }
+diesel_derives = "1.4"
+password-hash = "0.5.0"
+argon2 = "0.5.3"
+anyhow = "1.0.95"
+validator = { version = "0.19", features = ["derive"] }
+
+[[bin]]
+name = "kindred-auth-service"
+path = "src/main.rs"
