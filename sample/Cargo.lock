@@ -287,6 +287,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "auth"
+version = "0.1.0"
+dependencies = [
+ "actix-rt",
+ "actix-service",
+ "actix-web",
+ "anyhow",
+ "argon2",
+ "chrono",
+ "diesel",
+ "diesel_derives",
+ "dotenv",
+ "futures",
+ "futures-util",
+ "password-hash",
+ "rand",
+ "serde",
+ "sqlx",
+ "tokio",
+ "uuid 0.8.2",
+ "validator",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1189,30 +1213,6 @@ checksum = "a865e038f7f6ed956f788f0d7d60c541fff74c7bd74272c5d4cf15c63743e705"
 dependencies = [
  "once_cell",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "kindred-auth-service"
-version = "0.1.0"
-dependencies = [
- "actix-rt",
- "actix-service",
- "actix-web",
- "anyhow",
- "argon2",
- "chrono",
- "diesel",
- "diesel_derives",
- "dotenv",
- "futures",
- "futures-util",
- "password-hash",
- "rand",
- "serde",
- "sqlx",
- "tokio",
- "uuid 0.8.2",
- "validator",
 ]
 
 [[package]]

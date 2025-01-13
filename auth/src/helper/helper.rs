@@ -1,15 +1,6 @@
 use anyhow::Result;
 use argon2::{password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString}, Argon2};
-use rand::{Rng, thread_rng};
-use rand::distributions::Alphanumeric;
 
-pub fn generate_token() -> String {
-    thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(64)
-        .map(char::from)
-        .collect()
-}
 
 pub fn hash_password(pass: &String) -> Result<String, argon2::password_hash::Error>{
     println!("password: {:?}", pass);
@@ -26,14 +17,14 @@ pub fn hash_password(pass: &String) -> Result<String, argon2::password_hash::Err
     Ok(password_hash)
 }
 
-pub fn verif_pass(password: &str, password_hash: String) -> Result<(), ()>{
+pub fn verif_pass(password: &str, password_hash: String) -> Result<(), String>{
     let parsed_hash = PasswordHash::new(&password_hash).unwrap();
 
     let argon2 = Argon2::default();
 
     match argon2.verify_password(password.as_bytes(), &parsed_hash) {
         Ok(_) => Ok(()),
-        Err(_) => Err(()),
+        Err(_) => Err("Incorrect password!".to_string()),
     }
 }
 

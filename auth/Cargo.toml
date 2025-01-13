@@ -1,5 +1,5 @@
 [package]
-name = "kindred-auth-service"
+name = "auth"
 version = "0.1.0"
 edition = "2021"
 
@@ -24,5 +24,5 @@ anyhow = "1.0.95"
 validator = { version = "0.19", features = ["derive"] }
 
 [[bin]]
-name = "kindred-auth-service"
+name = "auth"
 path = "src/main.rs"

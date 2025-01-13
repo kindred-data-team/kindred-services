@@ -1,0 +1,3 @@
+CREATE TABLE rbac_profiles (
+    id UUID UNIQUE PRIMARY KEY REFERENCES users(rbac_id) ON DELETE CASCADE
+);

@@ -35,6 +35,13 @@ diesel::table! {
 }
 
 diesel::table! {
+    role_permissions (role_id, permission_id) {
+        role_id -> Int4,
+        permission_id -> Int4,
+    }
+}
+
+diesel::table! {
     roles (id) {
         id -> Int4,
         name -> Text,
@@ -44,11 +51,20 @@ diesel::table! {
 diesel::table! {
     sessions (id) {
         id -> Uuid,
-        token -> Text,
         expires_at -> Timestamp,
         created_at -> Timestamp,
         updated_at -> Timestamp,
         revoked -> Bool,
+        rbac_id -> Uuid,
+        user_id -> Int4,
+    }
+}
+
+diesel::table! {
+    user_permissions (id) {
+        id -> Int4,
+        user_id -> Int4,
+        permission_id -> Nullable<Int4>,
     }
 }
 
@@ -68,7 +84,7 @@ diesel::table! {
         remember_token -> Nullable<Varchar>,
         created_at -> Nullable<Timestamp>,
         updated_at -> Nullable<Timestamp>,
-        rbac_id -> Nullable<Uuid>,
+        rbac_id -> Uuid,
     }
 }
 
@@ -78,7 +94,12 @@ diesel::joinable!(profile_permissions -> permissions (permission_id));
 diesel::joinable!(profile_permissions -> rbac_profiles (rbac_id));
 diesel::joinable!(role_assignments -> rbac_profiles (rbac_id));
 diesel::joinable!(role_assignments -> roles (role_id));
-diesel::joinable!(users -> rbac_profiles (rbac_id));
+diesel::joinable!(role_permissions -> permissions (permission_id));
+diesel::joinable!(role_permissions -> roles (role_id));
+diesel::joinable!(sessions -> rbac_profiles (rbac_id));
+diesel::joinable!(sessions -> users (user_id));
+diesel::joinable!(user_permissions -> permissions (permission_id));
+diesel::joinable!(user_permissions -> users (user_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     permissions,
@@ -86,7 +107,9 @@ diesel::allow_tables_to_appear_in_same_query!(
     profile_permissions,
     rbac_profiles,
     role_assignments,
+    role_permissions,
     roles,
     sessions,
+    user_permissions,
     users,
 );

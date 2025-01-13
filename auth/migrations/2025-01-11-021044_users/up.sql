@@ -13,5 +13,5 @@ CREATE TABLE users (
     remember_token VARCHAR,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    rbac_id UUID UNIQUE REFERENCES rbac_profiles(id) ON DELETE CASCADE
+    rbac_id UUID UNIQUE NOT NULL DEFAULT gen_random_uuid() 
 );
