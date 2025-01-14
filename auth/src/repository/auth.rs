@@ -3,10 +3,11 @@ use chrono::{Duration, NaiveDateTime, Utc};
 use uuid::Uuid;
 use diesel::prelude::*;
 
-use crate::{helper::helper::validate_expiration, models::{auth::{NewSession, Session}, rbac::{NewPermission, NewRole, NewRolePermission, Permission, ProfilePermission, RBACResult, Role, RolePermission}, request::RBACRequest, users::NewUser}};
+use crate::helper::helper::validate_expiration;
 use crate::db::db::establish_connection;
-use crate::models::users::{UserLoginRequest, UserCredentials};
-use crate::models::request::MyField;
+use crate::models::users::{UserLoginRequest, UserCredentials, NewUser};
+use crate::models::auth::{NewSession, Session};
+use crate::models::rbac::{MyField, RBACRequest, NewPermission, NewRole, NewRolePermission, Permission, ProfilePermission, RBACResult, Role, RolePermission};
 use crate::helper::helper::{hash_password, verif_pass};
 
 pub fn fetch_sessions() -> Vec<Session>{

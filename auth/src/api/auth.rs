@@ -40,7 +40,7 @@ pub async fn register_user(req: web::Json<NewUserRequest>) -> impl Responder {
     }
 
     // Assign default role
-    let default_role_id = 3; // Default role 'user'
+    let default_role_id = 1; // Default role 'user'
     match assign_default_role(rbac_id, default_role_id){
         Ok(_) => HttpResponse::Ok().json(ApiResponse::new("User Registered!")),
         Err(e) => HttpResponse::BadRequest().json(ApiResponse::new(&e))
