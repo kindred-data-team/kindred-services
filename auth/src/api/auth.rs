@@ -1,36 +1,17 @@
 use actix_web::{web, HttpResponse, Responder, HttpRequest};
-use uuid::Uuid;
+use crate::helper::helper::request_validator;
 use crate::models::response::{ApiResponse, LoginResponse};
 use crate::models::users::{NewUser, NewUserRequest, UserLoginRequest};
-use crate::repository::auth::{assign_default_role, user_has_permission, fetch_sessions, get_user_login, insert_rbac_profile, insert_user};
+use crate::repository::auth::{assign_default_role, fetch_sessions, get_user_login, insert_rbac_profile, insert_user};
 use validator::Validate;
-use std::collections::HashMap;
 
 pub async fn get_session(req: HttpRequest) -> impl Responder {
-    // Get the path called
-    let path = req.path();
-
-    // Get the headers
-    let headers: HashMap<_, _> = req.headers()
-        .iter()
-        .map(|(name, value)| (name.to_string(), value.to_str().unwrap_or("").to_string()))
-        .collect();
-
-    let session_id = Uuid::parse_str(&headers["authorization"]).unwrap();
-
-    let permission_check = user_has_permission(session_id, path);
-
-    if let Err(e) = permission_check{
-        return HttpResponse::InternalServerError().json(ApiResponse::new(&e));
-    } else if permission_check.unwrap() == false {
-        return HttpResponse::Unauthorized().json(ApiResponse::new("Invalid access!"));
+    if let Err(e) = request_validator(req) {
+        return e;
     }
 
     let result = fetch_sessions();
 
-    for item in &result{
-        println!("{:?}", item)
-    }
     HttpResponse::Ok().json(result)
 }
 
@@ -59,7 +40,7 @@ pub async fn register_user(req: web::Json<NewUserRequest>) -> impl Responder {
     }
 
     // Assign default role
-    let default_role_id = 1; // Default role 'user'
+    let default_role_id = 3; // Default role 'user'
     match assign_default_role(rbac_id, default_role_id){
         Ok(_) => HttpResponse::Ok().json(ApiResponse::new("User Registered!")),
         Err(e) => HttpResponse::BadRequest().json(ApiResponse::new(&e))

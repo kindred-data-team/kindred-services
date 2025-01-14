@@ -1,6 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use chrono::NaiveDateTime;
-use sqlx::prelude::FromRow;
 use uuid::Uuid;
 
 use crate::schema::sessions;
@@ -22,34 +21,4 @@ pub struct Session {
     pub revoked: bool,
     pub rbac_id: Uuid,
     pub user_id: i32
-}
-
-#[derive(Serialize, Deserialize, Debug, FromRow)]
-pub struct Token {
-    pub id: Uuid,                
-    pub token: String,           
-    pub expires_at: NaiveDateTime, 
-    pub created_at: NaiveDateTime, 
-    pub updated_at: NaiveDateTime, 
-    pub revoked: bool
-}
-
-impl Token {
-    pub fn new(
-        id: Uuid,                
-        token: String,           
-        expires_at: NaiveDateTime, 
-        created_at: NaiveDateTime, 
-        updated_at: NaiveDateTime, 
-        revoked: bool,
-    ) -> Self {
-        Token {
-            id,
-            token,
-            expires_at,
-            created_at,
-            updated_at,
-            revoked,
-        }
-    }
 }

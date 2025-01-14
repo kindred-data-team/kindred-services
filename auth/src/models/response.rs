@@ -26,3 +26,18 @@ impl LoginResponse {
         }
     }
 }
+
+#[derive(Serialize)]
+pub struct ErrorResult {
+    pub status: u32,
+    pub message: String
+}
+
+impl ErrorResult {
+    pub fn new(status: u32, message: String) -> Self {
+        ErrorResult {
+            status,
+            message
+        }
+    }
+}
