@@ -28,7 +28,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    role_assignments (rbac_id, role_id) {
+    role_assignments (rbac_id) {
         rbac_id -> Uuid,
         role_id -> Int4,
     }

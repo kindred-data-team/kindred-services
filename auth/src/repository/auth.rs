@@ -7,7 +7,7 @@ use crate::helper::helper::validate_expiration;
 use crate::db::db::establish_connection;
 use crate::models::users::{UserLoginRequest, UserCredentials, NewUser};
 use crate::models::auth::{NewSession, Session};
-use crate::models::rbac::{MyField, RBACRequest, NewPermission, NewRole, NewRolePermission, Permission, ProfilePermission, RBACResult, Role, RolePermission};
+use crate::models::rbac::{MyField, NewPermission, NewRole, NewRoleAssignment, NewRolePermission, Permission, ProfilePermission, RBACRequest, RBACResult, Role, RoleAssignment, RolePermission};
 use crate::helper::helper::{hash_password, verif_pass};
 
 pub fn fetch_sessions() -> Vec<Session>{
@@ -222,6 +222,17 @@ pub fn get_role_permissions(connection: PgConnection, id: i32) -> Result<Vec<Rol
     Ok(role_permission)
 }
 
+pub fn get_role_assignment(connection: PgConnection, id: Uuid) -> Result<RoleAssignment, String>{
+    use crate::schema::role_assignments::dsl as ra_dsl;
+
+    let role_assignment: RoleAssignment = ra_dsl::role_assignments
+        .filter(ra_dsl::rbac_id.eq(id))
+        .first::<RoleAssignment>(&connection)
+        .map_err(|e| format!("Failed to fetch permission: {}", e))?;
+
+    Ok(role_assignment)
+}
+
 pub fn get_profile_permissions(connection: PgConnection, id: Uuid) -> Result<Vec<ProfilePermission>, String>{
     use crate::schema::profile_permissions::dsl as pp_dsl;
 
@@ -269,14 +280,26 @@ pub fn insert_role_permission(connection: PgConnection, req: NewRolePermission) 
     Ok(new_role_permission)
 }
 
+pub fn insert_role_assignment(connection: PgConnection, req: NewRoleAssignment) -> Result<RoleAssignment, String> {
+    use crate::schema::role_assignments::dsl as ra_dsl;
+
+    let new_role_assignment = diesel::insert_into(ra_dsl::role_assignments)
+        .values(&req)
+        .returning((ra_dsl::rbac_id, ra_dsl::role_id))
+        .get_result::<RoleAssignment>(&connection)
+        .map_err(|e| format!("Failed to insert new role permission: {}", e))?;
+
+    Ok(new_role_assignment)
+}
+
 pub fn rbac_db(rbac_request: RBACRequest) -> Result<RBACResult, String> {
     let connection = establish_connection();
 
     match rbac_request.method.as_str(){
         "get-permission" => {
-            if let Some(MyField::RBACPermission(permission)) = rbac_request.request {
-                match get_permission(connection, permission.permission_id) {
-                    Ok(permission_result) => return Ok(RBACResult::Permission(permission_result)),
+            if let Some(MyField::RBACPermission(request)) = rbac_request.request {
+                match get_permission(connection, request.permission_id) {
+                    Ok(result) => return Ok(RBACResult::Permission(result)),
                     Err(e) => return Err(e)
                 }
             } else {
@@ -284,9 +307,9 @@ pub fn rbac_db(rbac_request: RBACRequest) -> Result<RBACResult, String> {
             }
         },
         "get-role" => {
-            if let Some(MyField::RBACRole(role)) = rbac_request.request {
-                match get_role(connection, role.role_id) {
-                    Ok(role_result) => return Ok(RBACResult::Role(role_result)),
+            if let Some(MyField::RBACRole(request)) = rbac_request.request {
+                match get_role(connection, request.role_id) {
+                    Ok(result) => return Ok(RBACResult::Role(result)),
                     Err(e) => return Err(e)
                 }
             } else {
@@ -294,9 +317,19 @@ pub fn rbac_db(rbac_request: RBACRequest) -> Result<RBACResult, String> {
             }
         },
         "get-role-permissions" => {
-            if let Some(MyField::RBACRole(role_permission)) = rbac_request.request {
-                match get_role_permissions(connection, role_permission.role_id) {
-                    Ok(role_result) => return Ok(RBACResult::RolePermission(role_result)),
+            if let Some(MyField::RBACRole(request)) = rbac_request.request {
+                match get_role_permissions(connection, request.role_id) {
+                    Ok(result) => return Ok(RBACResult::RolePermission(result)),
+                    Err(e) => return Err(e)
+                }
+            } else {
+                return Err("Invalid request".to_string())
+            }
+        },
+        "get-role-assignment" => {
+            if let Some(MyField::RBACId(request)) = rbac_request.request {
+                match get_role_assignment(connection, request.rbac_id) {
+                    Ok(result) => return Ok(RBACResult::RoleAssignment(result)),
                     Err(e) => return Err(e)
                 }
             } else {
@@ -304,8 +337,8 @@ pub fn rbac_db(rbac_request: RBACRequest) -> Result<RBACResult, String> {
             }
         },
         "get-profile-permissions" => {
-            if let Some(MyField::RBACId(profile_permission)) = rbac_request.request {
-                match get_profile_permissions(connection, profile_permission.rbac_id) {
+            if let Some(MyField::RBACId(request)) = rbac_request.request {
+                match get_profile_permissions(connection, request.rbac_id) {
                     Ok(result) => return Ok(RBACResult::ProfilePermission(result)),
                     Err(e) => return Err(e)
                 }
@@ -314,10 +347,10 @@ pub fn rbac_db(rbac_request: RBACRequest) -> Result<RBACResult, String> {
             }
         },
         "add-permission" => {
-            if let Some(MyField::RBACAddPermission(permission)) = rbac_request.request {
-                let req = NewPermission { path: permission.path };
+            if let Some(MyField::RBACAddPermission(request)) = rbac_request.request {
+                let req = NewPermission { path: request.path };
                 match insert_permission(connection, req) {
-                    Ok(permission_result) => return Ok(RBACResult::Permission(permission_result)),
+                    Ok(result) => return Ok(RBACResult::Permission(result)),
                     Err(e) => return Err(e)
                 }
             } else {
@@ -325,8 +358,8 @@ pub fn rbac_db(rbac_request: RBACRequest) -> Result<RBACResult, String> {
             }
         },
         "add-role" => {
-            if let Some(MyField::RBACAddRole(permission)) = rbac_request.request {
-                let req = NewRole { name: permission.name };
+            if let Some(MyField::RBACAddRole(request)) = rbac_request.request {
+                let req = NewRole { name: request.name };
                 match insert_role(connection, req) {
                     Ok(result) => return Ok(RBACResult::Role(result)),
                     Err(e) => return Err(e)
@@ -336,10 +369,21 @@ pub fn rbac_db(rbac_request: RBACRequest) -> Result<RBACResult, String> {
             }
         },
         "add-role-permission" => {
-            if let Some(MyField::RBACAddRolePermission(permission)) = rbac_request.request {
-                let req = NewRolePermission { role_id: permission.role_id, permission_id: permission.permission_id };
+            if let Some(MyField::RBACAddRolePermission(request)) = rbac_request.request {
+                let req = NewRolePermission { role_id: request.role_id, permission_id: request.permission_id };
                 match insert_role_permission(connection, req) {
                     Ok(result) => return Ok(RBACResult::SingeRolePermission(result)),
+                    Err(e) => return Err(e)
+                }
+            } else {
+                return Err("Invalid request".to_string())
+            }
+        },
+        "add-role-assignment" => {
+            if let Some(MyField::RBACAddRoleAssignment(request)) = rbac_request.request {
+                let req = NewRoleAssignment { rbac_id: request.rbac_id, role_id: request.role_id };
+                match insert_role_assignment(connection, req) {
+                    Ok(result) => return Ok(RBACResult::RoleAssignment(result)),
                     Err(e) => return Err(e)
                 }
             } else {

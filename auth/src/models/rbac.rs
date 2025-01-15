@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use crate::schema::{permissions, roles, role_permissions};
+use crate::schema::{permissions, roles, role_permissions, role_assignments};
 
 #[derive(Insertable, Deserialize, Serialize)]
 #[table_name = "roles"]
@@ -13,6 +13,13 @@ pub struct NewRole {
 pub struct NewRolePermission {
     pub role_id: i32,
     pub permission_id: i32,
+}
+
+#[derive(Insertable, Deserialize, Serialize)]
+#[table_name = "role_assignments"]
+pub struct NewRoleAssignment {
+    pub rbac_id: Uuid,
+    pub role_id: i32
 }
 
 #[derive(Insertable, Deserialize, Serialize)]
@@ -33,10 +40,16 @@ pub struct Role {
     pub name: String
 }
 
-#[derive(Queryable, Serialize, Deserialize)]
+#[derive(Queryable, Serialize, Deserialize, Debug)]
 pub struct RolePermission {
     pub role_id: i32,
     pub permission_id: i32
+}
+
+#[derive(Queryable, Serialize, Deserialize, Debug)]
+pub struct RoleAssignment {
+    pub rbac_id: Uuid,
+    pub role_id: i32
 }
 
 #[derive(Queryable, Serialize, Deserialize)]
@@ -52,7 +65,8 @@ pub enum RBACResult {
     Role(Role),
     RolePermission(Vec<RolePermission>),
     ProfilePermission(Vec<ProfilePermission>),
-    SingeRolePermission(RolePermission)
+    SingeRolePermission(RolePermission),
+    RoleAssignment(RoleAssignment)
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -80,12 +94,6 @@ pub struct RBACId {
     pub rbac_id: Uuid
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RBACAddRolePermission {
-    pub role_id: i32,
-    pub permission_id: i32
-}
-
 #[derive(Debug, Serialize, Deserialize,)]
 #[serde(tag = "type")]
 pub enum MyField {
@@ -94,7 +102,8 @@ pub enum MyField {
     RBACId(RBACId),
     RBACAddPermission(RBACAddPermission),
     RBACAddRole(RBACAddRole),
-    RBACAddRolePermission(RBACAddRolePermission)
+    RBACAddRolePermission(RolePermission),
+    RBACAddRoleAssignment(RoleAssignment),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
