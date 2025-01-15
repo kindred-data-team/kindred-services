@@ -13,11 +13,11 @@ use crate::helper::helper::{hash_password, verif_pass};
 pub fn fetch_sessions() -> Vec<Session>{
     use crate::schema::sessions::dsl::*;
 
-    let connection = establish_connection();
+    let mut connection = establish_connection();
 
     let results = sessions
         .filter(revoked.eq(false))
-        .load::<Session>(&connection)
+        .load::<Session>(&mut connection)
         .expect("Error loading sessions");
 
     return results;
@@ -26,12 +26,12 @@ pub fn fetch_sessions() -> Vec<Session>{
 pub fn insert_rbac_profile(rbac_id: Uuid) -> Result<(), String>{
     use crate::schema::rbac_profiles::dsl as rbac_dsl;
 
-    let connection = establish_connection();
+    let mut connection = establish_connection();
 
 
     diesel::insert_into(rbac_dsl::rbac_profiles)
         .values(rbac_dsl::id.eq(rbac_id))
-        .execute(&connection)
+        .execute(&mut connection)
         .map_err(|e| format!("Failed to create RBAC profile: {}", e))?;
 
     Ok(())
@@ -40,7 +40,7 @@ pub fn insert_rbac_profile(rbac_id: Uuid) -> Result<(), String>{
 pub fn insert_user(req: &NewUser) -> Result<Uuid, String> {
     use crate::schema::users::dsl as users_dsl;
 
-    let connection = establish_connection();
+    let mut connection = establish_connection();
 
     let hashed_pass = hash_password(&req.password);
 
@@ -54,7 +54,7 @@ pub fn insert_user(req: &NewUser) -> Result<Uuid, String> {
     let rbac_id = diesel::insert_into(users_dsl::users)
         .values(&new_user)
         .returning(users_dsl::rbac_id)
-        .get_result::<Uuid>(&connection)
+        .get_result::<Uuid>(&mut connection)
         .map_err(|e| format!("Failed to create new user: {}", e))?;
 
     Ok(rbac_id)
@@ -63,14 +63,14 @@ pub fn insert_user(req: &NewUser) -> Result<Uuid, String> {
 pub fn assign_default_role(rbac_id: Uuid, default_role_id: i32) -> Result<(), String>{
     use crate::schema::role_assignments::dsl as ra_dsl;
 
-    let connection = establish_connection();
+    let mut connection = establish_connection();
 
     diesel::insert_into(ra_dsl::role_assignments)
         .values((
             ra_dsl::rbac_id.eq(rbac_id),
             ra_dsl::role_id.eq(default_role_id),
         ))
-        .execute(&connection)
+        .execute(&mut connection)
         .map_err(|e| format!("Failed to assign default role: {}", e))?;
 
     Ok(())
@@ -80,13 +80,13 @@ pub fn get_user_login(req: &UserLoginRequest) -> Result<Uuid, String> {
     use crate::schema::users::dsl::*;
     use crate::schema::sessions::dsl as sesh_dsl;
 
-    let connection = establish_connection();
+    let mut connection = establish_connection();
 
     // Fetch both password and rbac_id
     let result = users.filter(email.eq(&req.email))
         .select((id, password, rbac_id))
         .limit(1)
-        .first::<UserCredentials>(&connection);
+        .first::<UserCredentials>(&mut connection);
 
     // Handle the query result
     let credentials = match result {
@@ -110,7 +110,7 @@ pub fn get_user_login(req: &UserLoginRequest) -> Result<Uuid, String> {
     let session_id = diesel::insert_into(sesh_dsl::sessions)
         .values(&new_session)
         .returning(sesh_dsl::id)
-        .get_result::<Uuid>(&connection)
+        .get_result::<Uuid>(&mut connection)
         .map_err(|e| format!("Failed to create login session: {}", e))?;
 
     Ok(session_id)
@@ -122,7 +122,7 @@ pub fn user_has_permission(
     permission_path: &str,
 ) -> Result<bool, String> {
 
-    let connection = establish_connection();
+    let mut connection = establish_connection();
 
     use crate::schema::sessions::dsl as sesh_dsl;
     use crate::schema::profile_permissions::dsl as pp_dsl;
@@ -135,7 +135,7 @@ pub fn user_has_permission(
         .filter(sesh_dsl::id.eq(session_id))
         .filter(sesh_dsl::revoked.eq(false))
         .select(sesh_dsl::rbac_id)
-        .first(&connection)
+        .first(&mut connection)
         .map_err(|e| format!("Failed to fetch rbac_id from sessions: {}", e))?;
 
     // Check user-specific permissions
@@ -144,7 +144,7 @@ pub fn user_has_permission(
         .filter(pp_dsl::rbac_id.eq(r_id))
         .filter(p_dsl::path.eq(permission_path))
         .select(p_dsl::id)
-        .first::<i32>(&connection)
+        .first::<i32>(&mut connection)
         .optional()
         .map(|opt| opt.is_some())
         .map_err(|e| format!("Failed to check user permissions: {}", e))?;
@@ -163,7 +163,7 @@ pub fn user_has_permission(
         .filter(p_dsl::path.eq(permission_path))
         .select(p_dsl::id)
         .limit(1)
-        .first::<i32>(&connection)
+        .first::<i32>(&mut connection)
         .optional()
         .map(|opt| opt.is_some())
         .map_err(|e| format!("Failed to check role permissions: {}", e))?;
@@ -172,7 +172,7 @@ pub fn user_has_permission(
 }
 
 pub fn validate_session(session_id: Uuid) -> Result<(), String> {
-    let connection = establish_connection();
+    let mut connection = establish_connection();
 
     use crate::schema::sessions::dsl as sesh_dsl;
 
@@ -180,7 +180,7 @@ pub fn validate_session(session_id: Uuid) -> Result<(), String> {
         .filter(sesh_dsl::id.eq(session_id))
         .filter(sesh_dsl::revoked.eq(false))
         .select(sesh_dsl::expires_at)
-        .first(&connection)
+        .first(&mut connection)
         .map_err(|e| format!("Failed to fetch rbac_id from sessions: {}", e))?;
 
     match validate_expiration(expire_date){
@@ -189,107 +189,107 @@ pub fn validate_session(session_id: Uuid) -> Result<(), String> {
     } 
 }
 
-pub fn get_permission(connection: PgConnection, id: i32) -> Result<Permission, String>{
+pub fn get_permission(mut connection: PgConnection, id: i32) -> Result<Permission, String>{
     use crate::schema::permissions::dsl as p_dsl;
 
     let permission: Permission = p_dsl::permissions
         .filter(p_dsl::id.eq(id))
-        .first(&connection)
+        .first(&mut connection)
         .map_err(|e| format!("Failed to fetch permission: {}", e))?;
 
     Ok(permission)
 }
 
-pub fn get_role(connection: PgConnection, id: i32) -> Result<Role, String>{
-    use crate::schema::roles::dsl as r_dsl;
-
-    let role: Role = r_dsl::roles
-        .filter(r_dsl::id.eq(id))
-        .first(&connection)
-        .map_err(|e| format!("Failed to fetch permission: {}", e))?;
-
-    Ok(role)
-}
-
-pub fn get_role_permissions(connection: PgConnection, id: i32) -> Result<Vec<RolePermission>, String>{
-    use crate::schema::role_permissions::dsl as rp_dsl;
-
-    let role_permission: Vec<RolePermission> = rp_dsl::role_permissions
-        .filter(rp_dsl::role_id.eq(id))
-        .load::<RolePermission>(&connection)
-        .map_err(|e| format!("Failed to fetch permission: {}", e))?;
-
-    Ok(role_permission)
-}
-
-pub fn get_role_assignment(connection: PgConnection, id: Uuid) -> Result<RoleAssignment, String>{
-    use crate::schema::role_assignments::dsl as ra_dsl;
-
-    let role_assignment: RoleAssignment = ra_dsl::role_assignments
-        .filter(ra_dsl::rbac_id.eq(id))
-        .first::<RoleAssignment>(&connection)
-        .map_err(|e| format!("Failed to fetch permission: {}", e))?;
-
-    Ok(role_assignment)
-}
-
-pub fn get_profile_permissions(connection: PgConnection, id: Uuid) -> Result<Vec<ProfilePermission>, String>{
-    use crate::schema::profile_permissions::dsl as pp_dsl;
-
-    let profile_permissions: Vec<ProfilePermission> = pp_dsl::profile_permissions
-        .filter(pp_dsl::rbac_id.eq(id))
-        .load::<ProfilePermission>(&connection)
-        .map_err(|e| format!("Failed to fetch permission: {}", e))?;
-
-    Ok(profile_permissions)
-}
-
-pub fn insert_permission(connection: PgConnection, req: NewPermission) -> Result<Permission, String> {
+pub fn insert_permission(mut connection: PgConnection, req: NewPermission) -> Result<Permission, String> {
     use crate::schema::permissions::dsl as p_dsl;
 
     let new_permission = diesel::insert_into(p_dsl::permissions)
         .values(&req)
         .returning((p_dsl::id, p_dsl::path))
-        .get_result::<Permission>(&connection)
+        .get_result::<Permission>(&mut connection)
         .map_err(|e| format!("Failed to insert new permission: {}", e))?;
 
     Ok(new_permission)
 }
 
-pub fn insert_role(connection: PgConnection, req: NewRole) -> Result<Role, String> {
+pub fn get_role(mut connection: PgConnection, id: i32) -> Result<Role, String>{
+    use crate::schema::roles::dsl as r_dsl;
+
+    let role: Role = r_dsl::roles
+        .filter(r_dsl::id.eq(id))
+        .first(&mut connection)
+        .map_err(|e| format!("Failed to fetch permission: {}", e))?;
+
+    Ok(role)
+}
+
+pub fn insert_role(mut connection: PgConnection, req: NewRole) -> Result<Role, String> {
     use crate::schema::roles::dsl as r_dsl;
 
     let new_role = diesel::insert_into(r_dsl::roles)
         .values(&req)
         .returning((r_dsl::id, r_dsl::name))
-        .get_result::<Role>(&connection)
+        .get_result::<Role>(&mut connection)
         .map_err(|e| format!("Failed to insert new role: {}", e))?;
 
     Ok(new_role)
 }
 
-pub fn insert_role_permission(connection: PgConnection, req: NewRolePermission) -> Result<RolePermission, String> {
+pub fn get_role_permissions(mut connection: PgConnection, id: i32) -> Result<Vec<RolePermission>, String>{
+    use crate::schema::role_permissions::dsl as rp_dsl;
+
+    let role_permission: Vec<RolePermission> = rp_dsl::role_permissions
+        .filter(rp_dsl::role_id.eq(id))
+        .load::<RolePermission>(&mut connection)
+        .map_err(|e| format!("Failed to fetch permission: {}", e))?;
+
+    Ok(role_permission)
+}
+
+pub fn insert_role_permission(mut connection: PgConnection, req: NewRolePermission) -> Result<RolePermission, String> {
     use crate::schema::role_permissions::dsl as rp_dsl;
 
     let new_role_permission = diesel::insert_into(rp_dsl::role_permissions)
         .values(&req)
         .returning((rp_dsl::role_id, rp_dsl::permission_id))
-        .get_result::<RolePermission>(&connection)
+        .get_result::<RolePermission>(&mut connection)
         .map_err(|e| format!("Failed to insert new role permission: {}", e))?;
 
     Ok(new_role_permission)
 }
 
-pub fn insert_role_assignment(connection: PgConnection, req: NewRoleAssignment) -> Result<RoleAssignment, String> {
+pub fn get_role_assignment(mut connection: PgConnection, id: Uuid) -> Result<RoleAssignment, String>{
+    use crate::schema::role_assignments::dsl as ra_dsl;
+
+    let role_assignment: RoleAssignment = ra_dsl::role_assignments
+        .filter(ra_dsl::rbac_id.eq(id))
+        .first::<RoleAssignment>(&mut connection)
+        .map_err(|e| format!("Failed to fetch permission: {}", e))?;
+
+    Ok(role_assignment)
+}
+
+pub fn insert_role_assignment(mut connection: PgConnection, req: NewRoleAssignment) -> Result<RoleAssignment, String> {
     use crate::schema::role_assignments::dsl as ra_dsl;
 
     let new_role_assignment = diesel::insert_into(ra_dsl::role_assignments)
         .values(&req)
         .returning((ra_dsl::rbac_id, ra_dsl::role_id))
-        .get_result::<RoleAssignment>(&connection)
+        .get_result::<RoleAssignment>(&mut connection)
         .map_err(|e| format!("Failed to insert new role permission: {}", e))?;
 
     Ok(new_role_assignment)
+}
+
+pub fn get_profile_permissions(mut connection: PgConnection, id: Uuid) -> Result<Vec<ProfilePermission>, String>{
+    use crate::schema::profile_permissions::dsl as pp_dsl;
+
+    let profile_permissions: Vec<ProfilePermission> = pp_dsl::profile_permissions
+        .filter(pp_dsl::rbac_id.eq(id))
+        .load::<ProfilePermission>(&mut connection)
+        .map_err(|e| format!("Failed to fetch permission: {}", e))?;
+
+    Ok(profile_permissions)
 }
 
 pub fn rbac_db(rbac_request: RBACRequest) -> Result<RBACResult, String> {
