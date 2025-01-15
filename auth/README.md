@@ -50,7 +50,17 @@ This microservice is built with Rust, using the actix-web framework for handling
 
 ```bash
 https://github.com/kindred-data-team/kindred-services.git
-cd kindred-services/auth
+cd kindred-services
+```
+
+### Setup Diesel ORM
+
+Run the following command to setup diesel and run migration:
+```
+cd auth
+diesel setup
+diesel migration run
+cd ..
 ```
 
 ### Install Dependencies
@@ -59,21 +69,14 @@ Make sure you have Rust installed on your system. If not, follow the installatio
 
 Run the following command to install the project dependencies:
 ```
+cargo clean
 cargo build
-```
-
-### Setup Diesel ORM
-
-Run the following command to setup diesel and run migration:
-```
-diesel setup
 ```
 
 ### Run the Project
 
 Start the server with the following command:
 ```
-cd .. (you need to be in the root folder kindred-services)
 cargo run -p auth
 ```
 This will start the server on http://127.0.0.1:8080.
