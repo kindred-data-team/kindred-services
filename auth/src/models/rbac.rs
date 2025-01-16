@@ -104,6 +104,7 @@ pub enum MyField {
     RBACAddRole(RBACAddRole),
     RBACAddRolePermission(RolePermission),
     RBACAddRoleAssignment(RoleAssignment),
+    RBACDeleteRolePermission(RolePermission)
 }
 
 #[derive(Serialize, Deserialize, Debug)]
