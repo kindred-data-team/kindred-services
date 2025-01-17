@@ -6,7 +6,7 @@ use diesel::prelude::*;
 use crate::helper::helper::validate_expiration;
 use crate::db::db::establish_connection;
 use crate::models::users::{UserLoginRequest, UserCredentials, NewUser};
-use crate::models::auth::{NewSession, Session};
+use crate::models::auth::{NewSession, Session, SessionDetails};
 use crate::helper::helper::{hash_password, verif_pass};
 
 pub fn fetch_sessions() -> Vec<Session>{
@@ -75,7 +75,7 @@ pub fn assign_default_role(rbac_id: Uuid, default_role_id: i32) -> Result<(), St
     Ok(())
 }
 
-pub fn get_user_login(req: &UserLoginRequest) -> Result<Uuid, String> {
+pub fn get_user_login(req: &UserLoginRequest, access_token: &String) -> Result<Uuid, String> {
     use crate::schema::users::dsl::*;
     use crate::schema::sessions::dsl as sesh_dsl;
 
@@ -104,6 +104,7 @@ pub fn get_user_login(req: &UserLoginRequest) -> Result<Uuid, String> {
         expires_at: new_expires_at,
         rbac_id: credentials.rbac_id,
         user_id: credentials.id,
+        access_token: access_token.to_string()
     };
 
     let session_id = diesel::insert_into(sesh_dsl::sessions)
@@ -170,20 +171,20 @@ pub fn user_has_permission(
     Ok(has_role_permission)
 }
 
-pub fn validate_session(session_id: Uuid) -> Result<(), String> {
+pub fn validate_session(session_id: Uuid) -> Result<String, String> {
     let mut connection = establish_connection();
 
     use crate::schema::sessions::dsl as sesh_dsl;
 
-    let expire_date: NaiveDateTime = sesh_dsl::sessions
+    let session: SessionDetails = sesh_dsl::sessions
         .filter(sesh_dsl::id.eq(session_id))
         .filter(sesh_dsl::revoked.eq(false))
-        .select(sesh_dsl::expires_at)
+        .select((sesh_dsl::expires_at, sesh_dsl::access_token))
         .first(&mut connection)
         .map_err(|e| format!("Failed to fetch rbac_id from sessions: {}", e))?;
 
-    match validate_expiration(expire_date){
-        Ok(_) => Ok(()),
+    match validate_expiration(session.expires_at){
+        Ok(_) => Ok(session.access_token.unwrap()),
         Err(e) => Err(e)
     } 
 }

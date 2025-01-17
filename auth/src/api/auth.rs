@@ -1,4 +1,5 @@
 use actix_web::{web, HttpResponse, Responder, HttpRequest};
+use crate::laravel::auth::login_laravel;
 use crate::helper::helper::request_validator;
 use crate::models::response::{ApiResponse, LoginResponse};
 use crate::models::users::{NewUser, NewUserRequest, UserLoginRequest};
@@ -60,8 +61,15 @@ pub async fn login_user(req: web::Json<UserLoginRequest>) -> impl Responder {
     if let Err(errors) = request.validate() {
         return HttpResponse::BadRequest().json(errors.into_errors());
     };
-    match get_user_login(&request){
-        Ok(session_id) => HttpResponse::Ok().json(LoginResponse::new(session_id)),
+
+    let login_result = login_laravel(&request).await;
+    if let Err(e) = login_result {
+        return HttpResponse::BadRequest().json(e.to_string());
+    }
+    let response = login_result.unwrap();
+    
+    match get_user_login(&request, &response.access_token){
+        Ok(session_id) => HttpResponse::Ok().json(LoginResponse::new(session_id, response.access_token, response.token_type, response.expires_in)),
         Err(e) => HttpResponse::BadRequest().json(ApiResponse::new(&e))
     }
 }

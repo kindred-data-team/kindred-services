@@ -42,7 +42,7 @@ pub fn validate_expiration (expires_at: NaiveDateTime) -> Result<(), String>{
     }
 }
 
-pub fn request_validator (req: HttpRequest) -> Result<(), HttpResponse> {
+pub fn request_validator (req: HttpRequest) -> Result<String, HttpResponse> {
     // Get the path called
     let path = req.path();
 
@@ -64,7 +64,7 @@ pub fn request_validator (req: HttpRequest) -> Result<(), HttpResponse> {
     }
 
     match validate_session(session_id) {
-        Ok(_) => Ok(()),
+        Ok(token) => Ok(token),
         Err(e) => Err(HttpResponse::Unauthorized().json(ApiResponse::new(&e)))
     }
 }

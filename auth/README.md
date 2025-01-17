@@ -17,6 +17,7 @@ This microservice is built with Rust, using the actix-web framework for handling
 │   ├── config/  
 │   ├── db/
 │   ├── helper/  
+│   ├── laravel/  
 │   ├── middleware/  
 │   ├── models/  
 │   ├── repository/  
@@ -30,6 +31,7 @@ This microservice is built with Rust, using the actix-web framework for handling
 - `config/`: Manages application configuration.
 - `db/`: Contains database connection and setup logic.
 - `helper/`: Contains helper functions for specific tasks (password hashing, request validation, etc).
+- `laravel/`: Integration with kindred laravel APIs.
 - `middleware/`: Custom middleware for logging.
 - `models/`: Contains data models for the application.
 - `repository/`: Handles database interactions or data storage.
