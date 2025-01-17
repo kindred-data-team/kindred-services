@@ -1,0 +1,29 @@
+services:
+  hello-world:
+    build:
+      context: ./hello-world
+      dockerfile: Dockerfile
+    platform: "linux/x86_64"
+    ports:
+      - "0.0.0.0:8081:8081"
+    extra_hosts:
+      - "host.docker.internal:192.168.100.30"
+    networks:
+      - bridge
+  auth:
+    build:
+      context: ./auth
+      dockerfile: Dockerfile
+    platform: "linux/x86_64"
+    ports:
+      - "0.0.0.0:8080:8080"
+    extra_hosts:
+      - "host.docker.internal:192.168.100.30"
+    env_file:
+      - .env
+    networks:
+      - bridge
+
+networks:
+  bridge:
+    driver: bridge

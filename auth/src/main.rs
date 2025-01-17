@@ -19,8 +19,10 @@ mod helper;
 async fn main() -> std::io::Result<()> {
     // dotenv().ok();
  
-    let host = config::config::get_host();
-    let port = config::config::get_port();
+    // let host = config::config::get_host();
+    // let port = config::config::get_port();
+    let host = "0.0.0.0";
+    let port = "8080";
 
     println!("Server running at http://{}:{}", host, port);
     HttpServer::new(move || {
