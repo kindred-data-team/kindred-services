@@ -11,7 +11,9 @@ CREATE TABLE users (
     google_id VARCHAR,
     apple_id VARCHAR,
     remember_token VARCHAR,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     rbac_id UUID UNIQUE NOT NULL DEFAULT gen_random_uuid() 
 );
+
+SELECT diesel_manage_updated_at('users');

@@ -7,3 +7,5 @@ CREATE TABLE sessions (
     rbac_id UUID NOT NULL REFERENCES rbac_profiles(id),
     user_id SERIAL NOT NULL REFERENCES users(id)
 );
+
+SELECT diesel_manage_updated_at('sessions');

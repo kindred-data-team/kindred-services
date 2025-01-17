@@ -1,3 +1,4 @@
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use crate::schema::{permissions, roles, role_permissions, role_assignments};
@@ -8,7 +9,7 @@ pub struct NewRole {
     pub name: String
 }
 
-#[derive(Insertable, Deserialize, Serialize)]
+#[derive(Insertable, Deserialize, Serialize, Debug)]
 #[table_name = "role_permissions"]
 pub struct NewRolePermission {
     pub role_id: i32,
@@ -31,31 +32,41 @@ pub struct NewPermission {
 #[derive(Queryable, Serialize, Deserialize)]
 pub struct Permission {
     pub id: i32,
-    pub path: String
+    pub path: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 #[derive(Queryable, Serialize, Deserialize)]
 pub struct Role {
     pub id: i32,
-    pub name: String
+    pub name: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 #[derive(Queryable, Serialize, Deserialize, Debug)]
 pub struct RolePermission {
     pub role_id: i32,
-    pub permission_id: i32
+    pub permission_id: i32,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 #[derive(Queryable, Serialize, Deserialize, Debug)]
 pub struct RoleAssignment {
     pub rbac_id: Uuid,
-    pub role_id: i32
+    pub role_id: i32,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 #[derive(Queryable, Serialize, Deserialize)]
 pub struct ProfilePermission {
     pub rbac_id: Uuid,
-    pub permission_id: i32
+    pub permission_id: i32,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -102,7 +113,7 @@ pub enum MyField {
     RBACId(RBACId),
     RBACAddPermission(RBACAddPermission),
     RBACAddRole(RBACAddRole),
-    RBACAddRolePermission(RolePermission),
+    RBACAddRolePermission(NewRolePermission),
     RBACAddRoleAssignment(RoleAssignment),
     RBACDeleteRolePermission(RolePermission)
 }

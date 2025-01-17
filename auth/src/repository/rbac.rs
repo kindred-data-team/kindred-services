@@ -21,7 +21,7 @@ pub fn insert_permission(mut connection: PgConnection, req: NewPermission) -> Re
 
     let new_permission = diesel::insert_into(p_dsl::permissions)
         .values(&req)
-        .returning((p_dsl::id, p_dsl::path))
+        .returning((p_dsl::id, p_dsl::path, p_dsl::created_at, p_dsl::updated_at))
         .get_result::<Permission>(&mut connection)
         .map_err(|e| format!("Failed to insert new permission: {}", e))?;
 
@@ -32,7 +32,7 @@ pub fn delete_permission(mut connection: PgConnection, id: i32) -> Result<Permis
     use crate::schema::permissions::dsl as p_dsl;
 
     let permission: Permission = diesel::delete(p_dsl::permissions.filter(p_dsl::id.eq(id)))
-        .returning((p_dsl::id, p_dsl::path))
+        .returning((p_dsl::id, p_dsl::path, p_dsl::created_at, p_dsl::updated_at))
         .get_result::<Permission>(&mut connection)
         .map_err(|e| format!("Failed to delete permission: {}", e))?;
 
@@ -55,7 +55,7 @@ pub fn insert_role(mut connection: PgConnection, req: NewRole) -> Result<Role, S
 
     let new_role = diesel::insert_into(r_dsl::roles)
         .values(&req)
-        .returning((r_dsl::id, r_dsl::name))
+        .returning((r_dsl::id, r_dsl::name, r_dsl::created_at, r_dsl::updated_at))
         .get_result::<Role>(&mut connection)
         .map_err(|e| format!("Failed to insert new role: {}", e))?;
 
@@ -66,7 +66,7 @@ pub fn delete_role(mut connection: PgConnection, id: i32) -> Result<Role, String
     use crate::schema::roles::dsl as r_dsl;
 
     let role: Role = diesel::delete(r_dsl::roles.filter(r_dsl::id.eq(id)))
-        .returning((r_dsl::id, r_dsl::name))
+        .returning((r_dsl::id, r_dsl::name, r_dsl::created_at, r_dsl::updated_at))
         .get_result::<Role>(&mut connection)
         .map_err(|e| format!("Failed to fetch permission: {}", e))?;
 
@@ -89,7 +89,7 @@ pub fn insert_role_permission(mut connection: PgConnection, req: NewRolePermissi
 
     let new_role_permission = diesel::insert_into(rp_dsl::role_permissions)
         .values(&req)
-        .returning((rp_dsl::role_id, rp_dsl::permission_id))
+        .returning((rp_dsl::role_id, rp_dsl::permission_id, rp_dsl::created_at, rp_dsl::updated_at))
         .get_result::<RolePermission>(&mut connection)
         .map_err(|e| format!("Failed to insert new role permission: {}", e))?;
 
@@ -100,7 +100,7 @@ pub fn delete_role_permissions(mut connection: PgConnection, req: RolePermission
     use crate::schema::role_permissions::dsl as rp_dsl;
 
     let role_permission: RolePermission = diesel::delete(rp_dsl::role_permissions.filter(rp_dsl::role_id.eq(req.role_id)).filter(rp_dsl::permission_id.eq(req.permission_id)))
-        .returning((rp_dsl::permission_id, rp_dsl::role_id))
+        .returning((rp_dsl::role_id, rp_dsl::permission_id, rp_dsl::created_at, rp_dsl::updated_at))
         .get_result::<RolePermission>(&mut connection)
         .map_err(|e| format!("Failed to fetch permission: {}", e))?;
 
@@ -123,7 +123,7 @@ pub fn insert_role_assignment(mut connection: PgConnection, req: NewRoleAssignme
 
     let new_role_assignment = diesel::insert_into(ra_dsl::role_assignments)
         .values(&req)
-        .returning((ra_dsl::rbac_id, ra_dsl::role_id))
+        .returning((ra_dsl::rbac_id, ra_dsl::role_id, ra_dsl::created_at, ra_dsl::updated_at))
         .get_result::<RoleAssignment>(&mut connection)
         .map_err(|e| format!("Failed to insert new role permission: {}", e))?;
 
@@ -134,7 +134,7 @@ pub fn delete_role_assignment(mut connection: PgConnection, id: Uuid) -> Result<
     use crate::schema::role_assignments::dsl as ra_dsl;
 
     let role_assignment: RoleAssignment = diesel::delete(ra_dsl::role_assignments.filter(ra_dsl::rbac_id.eq(id)))
-        .returning((ra_dsl::rbac_id, ra_dsl::role_id))
+        .returning((ra_dsl::rbac_id, ra_dsl::role_id, ra_dsl::created_at, ra_dsl::updated_at))
         .get_result::<RoleAssignment>(&mut connection)
         .map_err(|e| format!("Failed to fetch permission: {}", e))?;
 
