@@ -74,9 +74,10 @@ pub async fn login_user(req: web::Json<UserLoginRequest>) -> impl Responder {
     } else {
         return HttpResponse::BadRequest().json(ApiResponse::new(&e));
     }
-} else {
-    return HttpResponse::BadRequest().json(ApiResponse::new("Failed to login user."));
+} else if let Ok(session_id) = login_request {
+    return HttpResponse::Ok().json(LoginResponse::new(session_id, response.access_token, response.token_type, response.expires_in))
 }
+return HttpResponse::BadRequest().json(ApiResponse::new("Failed to login user."));
 
 
     // match get_user_login(&request, &response.access_token){
