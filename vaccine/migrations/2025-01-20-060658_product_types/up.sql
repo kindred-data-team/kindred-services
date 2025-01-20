@@ -1,0 +1,9 @@
+-- Your SQL goes here
+CREATE TABLE IF NOT EXIST 'product_types' (
+    'id' INT AUTO_INCREMENT PRIMARY KEY,
+    'name' VARCHAR(255) UNIQUE NOT NULL,
+    'created_by' INT,
+    'updated_by' INT
+    'created_at' TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    'updated_at' TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
