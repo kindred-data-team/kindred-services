@@ -1,7 +1,7 @@
 use actix_web::{web, HttpResponse, Responder, HttpRequest};
 use crate::laravel::auth::login_laravel;
-use crate::helper::utils::{registration_process, request_validator};
-use crate::helper::utils::sync_user;
+use crate::helper::helper::{registration_process, request_validator};
+use crate::laravel::profile::sync_user;
 use crate::models::response::{ApiResponse, LoginResponse};
 use crate::models::users::{NewUser, NewUserRequest, UserLoginRequest};
 use crate::repository::auth::{fetch_sessions, get_user_login};

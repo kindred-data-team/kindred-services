@@ -1,5 +1,5 @@
 use actix_web::{HttpResponse, Responder, HttpRequest};
-use crate::helper::utils::request_validator;
+use crate::helper::helper::request_validator;
 use crate::laravel::doctor::get_all_doctors_laravel;
 use crate::models::response::ApiResponse;
 

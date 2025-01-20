@@ -3,11 +3,11 @@ use chrono::{Duration, NaiveDateTime, Utc};
 use uuid::Uuid;
 use diesel::prelude::*;
 
-use crate::helper::utils::validate_expiration;
+use crate::helper::helper::validate_expiration;
 use crate::db::db::establish_connection;
 use crate::models::users::{UserLoginRequest, UserCredentials, NewUser};
 use crate::models::auth::{NewSession, Session, SessionDetails};
-use crate::helper::utils::{hash_password, verif_pass};
+use crate::helper::helper::{hash_password, verif_pass};
 
 pub fn fetch_sessions() -> Vec<Session>{
     use crate::schema::sessions::dsl::*;

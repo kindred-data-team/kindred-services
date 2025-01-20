@@ -5,7 +5,7 @@ use chrono::{NaiveDateTime, Utc};
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use crate::{laravel::profile::get_user_profile, models::users::{NewUser, UserLoginRequest}, repository::auth::{user_has_permission, validate_session}};
+use crate::{models::users::NewUser, repository::auth::{user_has_permission, validate_session}};
 use crate::models::response::ApiResponse;
 use crate::repository::auth::{assign_default_role, insert_rbac_profile, insert_user};
 
@@ -113,29 +113,6 @@ pub fn registration_process (req: NewUser) -> Result<HttpResponse, HttpResponse>
         Ok(_) => Ok(HttpResponse::Ok().json(ApiResponse::new("User Registered!"))),
         Err(e) => Err(HttpResponse::BadRequest().json(ApiResponse::new(&e)))
     }
-}
-
-pub async fn sync_user (token: &String, login_request: &UserLoginRequest) -> Result<(), HttpResponse>{
-    let user_profile = get_user_profile(token.to_string()).await;
-    if let Err(_) = user_profile{
-        return Err(HttpResponse::InternalServerError().json(ApiResponse::new("Failed to fetch profile")));
-    }
-    let user_profile_details = user_profile.unwrap();
-    if let Some(first_name) = user_profile_details.get("first_name") {
-        if let Some(last_name) = user_profile_details.get("last_name") {
-            let new_user = NewUser {
-                first_name: first_name.to_string().replace("\"", ""),
-                last_name: last_name.to_string().replace("\"", ""),
-                email: login_request.email.clone(),
-                password: login_request.password.clone(),
-            };
-            match registration_process(new_user) {
-                Ok(_) => return Ok(()),
-                Err(e) => return Err(e)
-            }
-        }
-    }
-    return Err(HttpResponse::InternalServerError().json(ApiResponse::new("Failed to sync user.")));
 }
 
 // pub fn check_resource_access(rbac_id: &str, resource_scope: &str) -> bool {
