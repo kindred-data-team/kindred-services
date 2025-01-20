@@ -16,7 +16,7 @@ pub struct NewRolePermission {
     pub permission_id: i32,
 }
 
-#[derive(Insertable, Deserialize, Serialize)]
+#[derive(Insertable, Deserialize, Serialize, Debug)]
 #[table_name = "role_assignments"]
 pub struct NewRoleAssignment {
     pub rbac_id: Uuid,
@@ -73,11 +73,13 @@ pub struct ProfilePermission {
 
 pub enum RBACResult {
     Permission(Permission),
+    Permissions(Vec<Permission>),
     Role(Role),
+    Roles(Vec<Role>),
     RolePermission(Vec<RolePermission>),
     ProfilePermission(Vec<ProfilePermission>),
     SingeRolePermission(RolePermission),
-    RoleAssignment(RoleAssignment)
+    RoleAssignment(RoleAssignment),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -114,7 +116,7 @@ pub enum MyField {
     RBACAddPermission(RBACAddPermission),
     RBACAddRole(RBACAddRole),
     RBACAddRolePermission(NewRolePermission),
-    RBACAddRoleAssignment(RoleAssignment),
+    RBACUpdateRoleAssignment(NewRoleAssignment),
     RBACDeleteRolePermission(RolePermission)
 }
 

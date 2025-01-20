@@ -16,6 +16,16 @@ pub fn get_permission(mut connection: PgConnection, id: i32) -> Result<Permissio
     Ok(permission)
 }
 
+pub fn get_permissions(mut connection: PgConnection) -> Result<Vec<Permission>, String>{
+    use crate::schema::permissions::dsl as p_dsl;
+
+    let permission: Vec<Permission> = p_dsl::permissions
+        .load(&mut connection)
+        .map_err(|e| format!("Failed to fetch permission: {}", e))?;
+
+    Ok(permission)
+}
+
 pub fn insert_permission(mut connection: PgConnection, req: NewPermission) -> Result<Permission, String> {
     use crate::schema::permissions::dsl as p_dsl;
 
@@ -50,6 +60,16 @@ pub fn get_role(mut connection: PgConnection, id: i32) -> Result<Role, String>{
     Ok(role)
 }
 
+pub fn get_roles(mut connection: PgConnection) -> Result<Vec<Role>, String>{
+    use crate::schema::roles::dsl as r_dsl;
+
+    let role: Vec<Role> = r_dsl::roles
+        .load(&mut connection)
+        .map_err(|e| format!("Failed to fetch permission: {}", e))?;
+
+    Ok(role)
+}
+
 pub fn insert_role(mut connection: PgConnection, req: NewRole) -> Result<Role, String> {
     use crate::schema::roles::dsl as r_dsl;
 
@@ -77,6 +97,7 @@ pub fn get_role_permissions(mut connection: PgConnection, id: i32) -> Result<Vec
     use crate::schema::role_permissions::dsl as rp_dsl;
 
     let role_permission: Vec<RolePermission> = rp_dsl::role_permissions
+        // .inner_join(rhs)
         .filter(rp_dsl::role_id.eq(id))
         .load::<RolePermission>(&mut connection)
         .map_err(|e| format!("Failed to fetch permission: {}", e))?;
@@ -118,11 +139,11 @@ pub fn get_role_assignment(mut connection: PgConnection, id: Uuid) -> Result<Rol
     Ok(role_assignment)
 }
 
-pub fn insert_role_assignment(mut connection: PgConnection, req: NewRoleAssignment) -> Result<RoleAssignment, String> {
+pub fn update_role_assignment(mut connection: PgConnection, req: NewRoleAssignment) -> Result<RoleAssignment, String> {
     use crate::schema::role_assignments::dsl as ra_dsl;
 
-    let new_role_assignment = diesel::insert_into(ra_dsl::role_assignments)
-        .values(&req)
+    let new_role_assignment = diesel::update(ra_dsl::role_assignments.filter(ra_dsl::rbac_id.eq(req.rbac_id)))
+        .set(ra_dsl::role_id.eq(req.role_id))
         .returning((ra_dsl::rbac_id, ra_dsl::role_id, ra_dsl::created_at, ra_dsl::updated_at))
         .get_result::<RoleAssignment>(&mut connection)
         .map_err(|e| format!("Failed to insert new role permission: {}", e))?;
@@ -166,6 +187,12 @@ pub fn rbac_db(rbac_request: RBACRequest) -> Result<RBACResult, String> {
                 return Err("Invalid request".to_string())
             }
         },
+        "get-permissions" => {
+            match get_permissions(connection) {
+                Ok(result) => return Ok(RBACResult::Permissions(result)),
+                Err(e) => return Err(e)
+            }
+        },
         "get-role" => {
             if let Some(MyField::RBACRole(request)) = rbac_request.request {
                 match get_role(connection, request.role_id) {
@@ -174,6 +201,12 @@ pub fn rbac_db(rbac_request: RBACRequest) -> Result<RBACResult, String> {
                 }
             } else {
                 return Err("Invalid request".to_string())
+            }
+        },
+        "get-roles" => {
+            match get_roles(connection) {
+                Ok(result) => return Ok(RBACResult::Roles(result)),
+                Err(e) => return Err(e)
             }
         },
         "get-role-permissions" => {
@@ -239,10 +272,10 @@ pub fn rbac_db(rbac_request: RBACRequest) -> Result<RBACResult, String> {
                 return Err("Invalid request".to_string())
             }
         },
-        "add-role-assignment" => {
-            if let Some(MyField::RBACAddRoleAssignment(request)) = rbac_request.request {
+        "update-role-assignment" => {
+            if let Some(MyField::RBACUpdateRoleAssignment(request)) = rbac_request.request {
                 let req = NewRoleAssignment { rbac_id: request.rbac_id, role_id: request.role_id };
-                match insert_role_assignment(connection, req) {
+                match update_role_assignment(connection, req) {
                     Ok(result) => return Ok(RBACResult::RoleAssignment(result)),
                     Err(e) => return Err(e)
                 }

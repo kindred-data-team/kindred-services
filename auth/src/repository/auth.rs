@@ -98,7 +98,7 @@ pub fn get_user_login(req: &UserLoginRequest, access_token: &String) -> Result<U
         return Err(e);
     }
 
-    let new_expires_at:NaiveDateTime = Utc::now().naive_local() + Duration::hours(1);
+    let new_expires_at:NaiveDateTime = Utc::now().naive_local() + Duration::days(14);
 
     let new_session = NewSession {
         expires_at: new_expires_at,
