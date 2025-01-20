@@ -1,0 +1,21 @@
+[package]
+name = "kindred-vaccine-services"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-web = "4"
+actix-service = "2"
+actix-rt = "2"
+sqlx = { version = "0.7", features = ["mysql", "runtime-tokio-rustls", "chrono"] }
+chrono = { version = "0.4", features = ["serde"] }
+tokio = { version = "1", features = ["full"] }
+dotenv = "0.15"
+serde = "1.0"
+serde_json = "1.0"
+env_logger = "0.10"
+futures-util = "0.3"
+futures = "0.3"
+cargo-watch = "8.5.3"
+validator = { version = "0.16", features = ["derive"] }
+jsonwebtoken = "8.1"
