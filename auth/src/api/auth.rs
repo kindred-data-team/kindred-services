@@ -46,19 +46,23 @@ pub async fn register_user(req: web::Json<NewUserRequest>) -> impl Responder {
 
 pub async fn login_user(req: web::Json<UserLoginRequest>) -> impl Responder {
     let request = req.into_inner();
+
     // Validate the input
     if let Err(errors) = request.validate() {
         return HttpResponse::BadRequest().json(errors.into_errors());
     };
 
+    // Login on laravel
     let login_result = login_laravel(&request).await;
     if let Err(e) = login_result {
         return HttpResponse::BadRequest().json(e.to_string());
     }
     let response = login_result.unwrap();
 
+    // Login on rust auth-service
     let login_request = get_user_login(&request, &response.access_token);
     if let Err(e) = login_request.clone() {
+        //Check if account exists in laravel and sync if existing
         if !response.access_token.is_empty() {
         match sync_user(&response.access_token, &request).await {
             Ok(_) => {
@@ -69,8 +73,6 @@ pub async fn login_user(req: web::Json<UserLoginRequest>) -> impl Responder {
             },
             Err(e) => return e
         }
-    }  else if let Ok(session_id) = login_request {
-        return HttpResponse::Ok().json(LoginResponse::new(session_id, response.access_token, response.token_type, response.expires_in))
     } else {
         return HttpResponse::BadRequest().json(ApiResponse::new(&e));
     }
