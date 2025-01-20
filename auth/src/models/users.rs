@@ -9,8 +9,7 @@ pub struct NewUser {
     pub first_name: String,
     pub last_name: String,
     pub email: String,
-    pub password: String,
-    pub rbac_id: Uuid
+    pub password: String
 }
 
 #[derive(Validate, Serialize, Deserialize, Debug)]
@@ -33,4 +32,11 @@ pub struct UserLoginRequest {
     pub email: String,
     #[validate(length(min = 6, message = "Password must be at least 6 characters"))]
     pub password: String,
+}
+
+#[derive(Queryable)]
+pub struct UserCredentials {
+    pub id: i32,
+    pub password: Option<String>,
+    pub rbac_id: Uuid,
 }

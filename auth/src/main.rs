@@ -15,6 +15,9 @@ mod config;
 mod middleware;
 mod schema;
 mod helper;
+mod laravel;
+
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     // dotenv().ok();

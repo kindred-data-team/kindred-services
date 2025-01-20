@@ -1,0 +1,7 @@
+CREATE TABLE rbac_profiles (
+    id UUID UNIQUE PRIMARY KEY REFERENCES users(rbac_id) ON DELETE CASCADE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+SELECT diesel_manage_updated_at('rbac_profiles');

@@ -1,4 +1,0 @@
-CREATE TABLE permissions (
-    id SERIAL PRIMARY KEY,
-    path TEXT UNIQUE NOT NULL
-);

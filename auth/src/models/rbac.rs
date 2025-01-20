@@ -1,182 +1,127 @@
-use std::collections::{HashMap, HashSet};
+use chrono::NaiveDateTime;
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+use crate::schema::{permissions, roles, role_permissions, role_assignments};
 
+#[derive(Insertable, Deserialize, Serialize)]
+#[table_name = "roles"]
+pub struct NewRole {
+    pub name: String
+}
 
-#[derive(Debug, Clone, PartialEq, Hash)]
+#[derive(Insertable, Deserialize, Serialize, Debug)]
+#[table_name = "role_permissions"]
+pub struct NewRolePermission {
+    pub role_id: i32,
+    pub permission_id: i32,
+}
+
+#[derive(Insertable, Deserialize, Serialize, Debug)]
+#[table_name = "role_assignments"]
+pub struct NewRoleAssignment {
+    pub rbac_id: Uuid,
+    pub role_id: i32
+}
+
+#[derive(Insertable, Deserialize, Serialize)]
+#[table_name = "permissions"]
+pub struct NewPermission {
+    pub path: String
+}
+
+#[derive(Queryable, Serialize, Deserialize)]
 pub struct Permission {
-    path: String
+    pub id: i32,
+    pub path: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
-impl Permission {
-    fn new(path: &str) -> Self {
-        Permission {
-            path: path.to_string()
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Queryable, Serialize, Deserialize)]
 pub struct Role {
-    name: String,
-    permissions: HashSet<String>
+    pub id: i32,
+    pub name: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
-impl Role {
-    pub fn new(name: &str) -> Self {
-        Role {
-            name: name.to_string(),
-            permissions: HashSet::new()
-        }
-    }
-
-    pub fn add_role(&mut self, permission: &str) {
-        self.permissions.insert(permission.to_string());
-    }
+#[derive(Queryable, Serialize, Deserialize, Debug)]
+pub struct RolePermission {
+    pub role_id: i32,
+    pub permission_id: i32,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
-#[derive(Debug, Clone)]
-pub struct User {
-    id: String,
-    roles: HashSet<String>,
-    direct_permissions: HashSet<String>,
-    denied_permissions: HashSet<String>
+#[derive(Queryable, Serialize, Deserialize, Debug)]
+pub struct RoleAssignment {
+    pub rbac_id: Uuid,
+    pub role_id: i32,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
-impl User {
-    pub fn new(id: &str) -> Self {
-        User {
-            id: id.to_string(),
-            roles: HashSet::new(),
-            direct_permissions: HashSet::new(),
-            denied_permissions: HashSet::new(),
-        }
-    }
-
-    pub fn add_role(&mut self, role: &str) {
-        self.roles.insert(role.to_string());
-    }
-
-    pub fn add_direct_permission(&mut self, permission: &str) {
-        self.direct_permissions.insert(permission.to_string());
-    }
-
-    pub fn add_denied_permission(&mut self, permission: &str) {
-        self.denied_permissions.insert(permission.to_string());
-    }
+#[derive(Queryable, Serialize, Deserialize)]
+pub struct ProfilePermission {
+    pub rbac_id: Uuid,
+    pub permission_id: i32,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
-#[derive(Debug, Clone)]
-pub struct PermissionTrie {
-    root: TriedNode
+#[derive(Serialize, Deserialize)]
+
+pub enum RBACResult {
+    Permission(Permission),
+    Permissions(Vec<Permission>),
+    Role(Role),
+    Roles(Vec<Role>),
+    RolePermission(Vec<RolePermission>),
+    ProfilePermission(Vec<ProfilePermission>),
+    SingeRolePermission(RolePermission),
+    RoleAssignment(RoleAssignment),
 }
 
-#[derive(Debug, Clone)]
-pub struct TriedNode {
-    children: HashMap<String, TriedNode>,
-    is_wildcard: bool,
-    is_endpoint: bool,
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RBACPermission {
+    pub permission_id: i32
 }
 
-impl TriedNode {
-    pub fn new() -> Self {
-        TriedNode {children: HashMap::new(), is_wildcard: false, is_endpoint: false}
-    }
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RBACAddPermission {
+    pub path: String
 }
 
-impl PermissionTrie {
-    pub fn new() -> Self {
-        PermissionTrie {root: TriedNode::new()}
-    }
-
-    pub fn insert(&mut self, permission: &str) {
-        let mut node = &mut self.root;
-        let parts: Vec<&str> = permission.trim_end_matches('/').split('/').collect();
-
-        for part in parts {
-            if part == "*" {
-                node.is_wildcard = true;
-                break;
-            }
-
-            node = node.children.entry(part.to_string()).or_insert(TriedNode::new());
-        }
-        node.is_endpoint = true;
-    }
-
-    pub fn has_permission(&self, path: &str) -> bool {
-        let parts: Vec<&str> = path.trim_end_matches('/').split('/').collect();
-        let mut node= &self.root;
-    
-        for part in parts {
-            if node.is_wildcard {
-                return true;
-            }
-    
-            if let Some(next_node) = node.children.get(part) {
-                node = next_node;
-            } else {
-                return false;
-            }
-        }
-    
-        node.is_endpoint || node.is_wildcard
-    }
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RBACRole {
+    pub role_id: i32
 }
 
-struct RBAC {
-    roles: HashMap<String, Role>,
-    users: HashMap<String, User>,
-    permission_trie: PermissionTrie,
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RBACAddRole {
+    pub name: String
 }
 
-impl RBAC {
-    pub fn new() -> Self {
-        RBAC {
-            roles: HashMap::new(),
-            users: HashMap::new(),
-            permission_trie: PermissionTrie::new(),
-        }
-    }
-
-    pub fn add_role(&mut self, role: Role) {
-        self.roles.insert(role.name.clone(), role);
-    }
-
-    pub fn add_user(&mut self, user: User) {
-        self.users.insert(user.id.clone(), user);
-    }
-
-    pub fn check_resource_access(&self, rbac_id: &str, resource_scope: &str) -> bool {
-        if let Some(profile) = self.users.get(rbac_id) {
-            if profile.denied_permissions.contains(resource_scope) {
-                return false;
-            }
-
-            if profile.direct_permissions.contains(resource_scope) {
-                return true;
-            }
-
-            for role_name in &profile.roles {
-                if let Some(role) = self.roles.get(role_name) {
-                    if role.permissions.contains(resource_scope) {
-                        return true;
-                    }
-
-                    for permission in &role.permissions {
-                        if permission.ends_with("*") && resource_scope.starts_with(permission.trim_end_matches('*')) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        false
-    }
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RBACId {
+    pub rbac_id: Uuid
 }
 
-#[derive(Debug, Clone)]
-pub struct RbacProfile {
-    id: String,
-    roles: HashSet<String>,
-    direct_permissions: HashSet<String>,
-    denied_permissions: HashSet<String>,
+#[derive(Debug, Serialize, Deserialize,)]
+#[serde(tag = "type")]
+pub enum MyField {
+    RBACPermission(RBACPermission),
+    RBACRole(RBACRole),
+    RBACId(RBACId),
+    RBACAddPermission(RBACAddPermission),
+    RBACAddRole(RBACAddRole),
+    RBACAddRolePermission(NewRolePermission),
+    RBACUpdateRoleAssignment(NewRoleAssignment),
+    RBACDeleteRolePermission(RolePermission)
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RBACRequest {
+    pub method: String,
+    pub request: Option<MyField>,
 }
