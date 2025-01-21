@@ -19,3 +19,7 @@ futures = "0.3"
 cargo-watch = "8.5.3"
 validator = { version = "0.16", features = ["derive"] }
 jsonwebtoken = "8.1"
+
+[[bin]]
+name = "vaccine"
+path = "src/main.rs"
