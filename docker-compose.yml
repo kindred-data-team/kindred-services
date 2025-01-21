@@ -1,0 +1,27 @@
+services:
+  auth:
+    build:
+      context: ./auth
+      dockerfile: Dockerfile
+    platform: "linux/x86_64"
+    ports:
+      - "0.0.0.0:8080:8080"
+    env_file:
+      - .env
+    networks:
+      - bridge
+  vaccine:
+    build:
+      context: ./vaccine
+      dockerfile: Dockerfile
+    platform: "linux/x86_64"
+    ports:
+      - "0.0.0.0:8081:8081"
+    env_file:
+      - ./vaccine/.env
+    networks:
+      - bridge
+
+networks:
+  bridge:
+    driver: bridge
