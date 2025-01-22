@@ -23,7 +23,15 @@ pub async fn get_health_service_variants(
     let health_service_variants = sqlx::query_as!(
         HealthServiceVariant,
         r#"
-        SELECT *
+        SELECT 
+            id,
+            name,
+            service_id,
+            number_of_dose,
+            shopify_id,
+            shopify_sku,
+            shopify_variant_id,
+            price
         FROM health_service_variants
         WHERE service_id = ?
         ORDER BY id LIMIT ? OFFSET ? 
@@ -47,7 +55,15 @@ pub async fn get_health_service_variant_by_id(
     sqlx::query_as!(
         HealthServiceVariant,
         r#"
-        SELECT *
+        SELECT 
+            id,
+            name,
+            service_id,
+            number_of_dose,
+            shopify_id,
+            shopify_sku,
+            shopify_variant_id,
+            price
         FROM health_service_variants
         WHERE id = ?
         "#,
@@ -65,9 +81,9 @@ pub async fn add_health_service_variant(
     sqlx::query!(
         r#"
         INSERT INTO health_service_variants (
-            service_id, name, number_of_dose, shopify_id, shopify_sku, shopify_variant_id, created_by, updated_by, created_at, updated_at
+            service_id, name, number_of_dose, shopify_id, shopify_sku, shopify_variant_id, price, created_by, updated_by, created_at, updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
         "#,
         health_service_variant.service_id,
         health_service_variant.name,
@@ -75,6 +91,7 @@ pub async fn add_health_service_variant(
         health_service_variant.shopify_id,
         health_service_variant.shopify_sku,
         health_service_variant.shopify_variant_id,
+        health_service_variant.price,
         user,
         user
     )

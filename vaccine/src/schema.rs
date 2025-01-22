@@ -87,6 +87,8 @@ diesel::table! {
         shopify_sku -> Nullable<Varchar>,
         #[max_length = 255]
         shopify_variant_id -> Nullable<Varchar>,
+        #[max_length = 255]
+        image_url -> Nullable<Varchar>,
         created_by -> Nullable<Integer>,
         updated_by -> Nullable<Integer>,
         created_at -> Nullable<Timestamp>,

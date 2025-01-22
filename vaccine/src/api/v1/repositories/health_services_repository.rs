@@ -17,10 +17,24 @@ pub async fn get_health_services(pool: &Pool<MySql>, page: usize, limit: usize, 
     let health_services = sqlx::query_as!(
         HealthService,
         r#"
-        SELECT *
-        FROM health_services
-        WHERE product_type_id = ?
-        ORDER BY id LIMIT ? OFFSET ?
+        SELECT
+            hs.id,
+            hs.product_type_id,
+            hs.name,
+            hs.description,
+            hs.details,
+            hs.for_whom,
+            hs.shopify_id,
+            hs.shopify_sku,
+            hs.shopify_variant_id,
+            hs.image_url,
+            MIN(hsv.price) AS "min_price",
+            MAX(hsv.price) AS "max_price"
+        FROM health_services as hs
+        LEFT JOIN health_service_variants as hsv ON hs.id = hsv.service_id
+        WHERE hs.product_type_id = ?
+        GROUP BY hs.id 
+        ORDER BY hs.id LIMIT ? OFFSET ?
         "#,
         product_type_id as i32,
         limit as i32,
@@ -39,9 +53,23 @@ pub async fn get_health_service_by_id(pool: &Pool<MySql>, id: i32) -> Result<Hea
     sqlx::query_as!(
         HealthService,
         r#"
-        SELECT *
-        FROM health_services
-        WHERE id = ?
+        SELECT 
+            hs.id,
+            hs.product_type_id,
+            hs.name,
+            hs.description,
+            hs.details,
+            hs.for_whom,
+            hs.shopify_id,
+            hs.shopify_sku,
+            hs.shopify_variant_id,
+            hs.image_url,
+            MIN(hsv.price) AS "min_price",
+            MAX(hsv.price) AS "max_price"  
+        FROM health_services as hs
+        JOIN health_service_variants as hsv ON hs.id = hsv.service_id
+        WHERE hs.id = ?
+        GROUP BY hs.id 
         "#,
         id
     )
@@ -57,7 +85,7 @@ pub async fn add_health_service(
     sqlx::query!(
         r#"
         INSERT INTO health_services (
-            product_type_id, name, description, details, for_whom, price, shopify_id, shopify_sku, shopify_variant_id, created_by, updated_by, created_at, updated_at
+            product_type_id, name, description, details, for_whom, shopify_id, shopify_sku, shopify_variant_id, image_url, created_by, updated_by, created_at, updated_at
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
         "#,
@@ -66,10 +94,10 @@ pub async fn add_health_service(
         service.description,
         service.details,
         service.for_whom,
-        service.price,
         service.shopify_id,
         service.shopify_sku,
         service.shopify_variant_id,
+        service.image_url,
         user,
         user
     )
@@ -95,9 +123,6 @@ pub async fn edit_health_service(
     }
     if let Some(ref details) = health_service.details {
         sets.push(format!("details = '{}'", details));
-    }
-    if let Some(price) = health_service.price {
-        sets.push(format!("price = {}", price));
     }
     if let Some(ref shopify_id) = health_service.shopify_id {
         sets.push(format!("shopify_id = {}", shopify_id));

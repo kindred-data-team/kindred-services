@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS `health_services` (
     `shopify_id` VARCHAR(255),
     `shopify_sku` VARCHAR(255),
     `shopify_variant_id` VARCHAR(255),
+    `image_url` VARCHAR(255),
     `created_by` INT DEFAULT NULL,
     `updated_by` INT DEFAULT NULL,
     `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,

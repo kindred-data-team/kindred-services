@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use chrono::Utc;
 use validator::Validate;
 
 use super::response_model::Meta;
@@ -20,10 +19,7 @@ pub struct HealthServiceVariant {
     pub shopify_id: Option<String>,
     pub shopify_sku: Option<String>,
     pub shopify_variant_id: Option<String>,
-    pub created_by: Option<i32>,
-    pub updated_by: Option<i32>,
-    pub created_at: Option<chrono::DateTime<Utc>>,
-    pub updated_at: Option<chrono::DateTime<Utc>>,
+    pub price: Option<i32>
 }
 
 #[derive(Serialize, Deserialize, Validate)]
@@ -36,6 +32,7 @@ pub struct CreateHealthServiceVariant {
     pub shopify_id: Option<String>,
     pub shopify_sku: Option<String>,
     pub shopify_variant_id: Option<String>,
+    pub price: Option<f32>
 }
 
 #[derive(Serialize, Deserialize, Validate)]

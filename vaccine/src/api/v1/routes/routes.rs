@@ -3,7 +3,7 @@ use crate::api::v1::controllers::{*};
 use sqlx::MySqlPool;
 
 pub fn routes(pool: web::Data<MySqlPool>) -> Scope {
-    web::scope("/api/v1")
+    web::scope("/api/vaccine")
         .app_data(pool.clone()) 
         .service(
             web::scope("/product_types")
