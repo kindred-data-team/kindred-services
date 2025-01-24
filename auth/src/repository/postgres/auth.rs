@@ -3,11 +3,11 @@ use chrono::{Duration, NaiveDateTime, Utc};
 use uuid::Uuid;
 use diesel::prelude::*;
 
-use crate::helper::helper::validate_expiration;
-use crate::db::db::establish_connection;
-use crate::models::users::{UserLoginRequest, UserCredentials, NewUser};
+use crate::models::users::{NewUser, SessionCredentials, UserCredentials, UserLoginRequest};
 use crate::models::auth::{NewSession, Session, SessionDetails};
-use crate::helper::helper::{hash_password, verif_pass};
+use crate::utils::helper::{matches_permission_path, validate_expiration};
+use crate::config::config::get_session_duration;
+use crate::db::db::establish_connection;
 
 pub fn fetch_sessions() -> Vec<Session>{
     use crate::schema::sessions::dsl::*;
@@ -37,20 +37,15 @@ pub fn insert_rbac_profile(rbac_id: Uuid) -> Result<(), String>{
 }
 
 pub fn insert_user(req: &NewUser) -> Result<Uuid, String> {
-    use crate::schema::users::dsl as users_dsl;
+    use crate::schema::auth_users::dsl as users_dsl;
 
     let mut connection = establish_connection();
 
-    let hashed_pass = hash_password(&req.password);
-
     let new_user = NewUser {
-        password: hashed_pass.expect("Error in parsing password!"),
-        first_name: req.first_name.clone(),
-        last_name: req.last_name.clone(),
         email: req.email.clone(),
     };
 
-    let rbac_id = diesel::insert_into(users_dsl::users)
+    let rbac_id = diesel::insert_into(users_dsl::auth_users)
         .values(&new_user)
         .returning(users_dsl::rbac_id)
         .get_result::<Uuid>(&mut connection)
@@ -75,35 +70,18 @@ pub fn assign_default_role(rbac_id: Uuid, default_role_id: i32) -> Result<(), St
     Ok(())
 }
 
-pub fn get_user_login(req: &UserLoginRequest, access_token: &String) -> Result<Uuid, String> {
-    use crate::schema::users::dsl::*;
+fn create_session(rbac_id: Uuid, auth_user_id: i32, access_token: &String) -> Result<Uuid, String> {
     use crate::schema::sessions::dsl as sesh_dsl;
 
     let mut connection = establish_connection();
 
-    // Fetch both password and rbac_id
-    let result = users.filter(email.eq(&req.email))
-        .select((id, password, rbac_id))
-        .limit(1)
-        .first::<UserCredentials>(&mut connection);
-
-    // Handle the query result
-    let credentials = match result {
-        Ok(credentials) => credentials,
-        Err(e) => return Err(e.to_string()),
-    };
-
-    // Verify the password
-    if let Err(e) = verif_pass(&req.password, credentials.password.unwrap()){
-        return Err(e);
-    }
-
-    let new_expires_at:NaiveDateTime = Utc::now().naive_local() + Duration::days(14);
+    let default_duration = get_session_duration();
+    let new_expires_at:NaiveDateTime = Utc::now().naive_local() + Duration::days(default_duration);
 
     let new_session = NewSession {
         expires_at: new_expires_at,
-        rbac_id: credentials.rbac_id,
-        user_id: credentials.id,
+        rbac_id,
+        auth_user_id,
         access_token: access_token.to_string()
     };
 
@@ -116,6 +94,67 @@ pub fn get_user_login(req: &UserLoginRequest, access_token: &String) -> Result<U
     Ok(session_id)
 }
 
+pub fn get_new_session(session_id: &Uuid, access_token: &String) -> Result<Uuid, String> {
+    use crate::schema::sessions::dsl as sesh_dsl;
+
+    let mut connection = establish_connection();
+
+    let result = sesh_dsl::sessions.filter(sesh_dsl::id.eq(session_id))
+        .select((sesh_dsl::auth_user_id, sesh_dsl::rbac_id))
+        .limit(1)
+        .first::<SessionCredentials>(&mut connection);
+
+    // Handle the query result
+    let credentials = match result {
+        Ok(credentials) => credentials,
+        Err(e) => return Err(e.to_string()),
+    };
+
+    match create_session(credentials.rbac_id, credentials.user_id, access_token) {
+        Ok(session_id) => Ok(session_id),
+        Err(e) => Err(e)
+    }
+}
+
+pub fn get_user_login(req: &UserLoginRequest, access_token: &String) -> Result<Uuid, String> {
+    use crate::schema::auth_users::dsl::*;
+
+    let mut connection = establish_connection();
+
+    // Fetch auth_user_id and rbac_id
+    let result = auth_users.filter(email.eq(&req.email))
+        .select((id, rbac_id))
+        .limit(1)
+        .first::<UserCredentials>(&mut connection);
+
+    // Handle the query result
+    let credentials: UserCredentials = match result {
+        Ok(credentials) => credentials,
+        Err(e) => return Err(e.to_string()),
+    };
+
+    match create_session(credentials.rbac_id, credentials.id, access_token) {
+        Ok(session_id) => Ok(session_id),
+        Err(e) => Err(e)
+    }
+}
+
+pub fn auth_path_check(permission_path: String) -> Result<bool, String> {
+    let mut connection = establish_connection();
+    use crate::schema::permissions::dsl as p_dsl;
+
+    let permissions: Vec<String> = p_dsl::permissions
+        .filter(p_dsl::is_private.eq(false))
+        .select(p_dsl::path)
+        .load(&mut connection)
+        .map_err(|e| format!("Failed to fetch permissions: {}", e))?;
+
+    let auth_check = permissions
+        .iter()
+        .any(|path| matches_permission_path(path, &permission_path));
+
+    Ok(auth_check)
+}
 
 pub fn user_has_permission(
     session_id: Uuid,
@@ -125,7 +164,6 @@ pub fn user_has_permission(
     let mut connection = establish_connection();
 
     use crate::schema::sessions::dsl as sesh_dsl;
-    use crate::schema::profile_permissions::dsl as pp_dsl;
     use crate::schema::permissions::dsl as p_dsl;
     use crate::schema::role_assignments::dsl as ra_dsl;
     use crate::schema::role_permissions::dsl as rp_dsl;
@@ -138,35 +176,18 @@ pub fn user_has_permission(
         .first(&mut connection)
         .map_err(|e| format!("Failed to fetch rbac_id from sessions: {}", e))?;
 
-    // Check user-specific permissions
-    let has_user_permission: bool = pp_dsl::profile_permissions
-        .inner_join(p_dsl::permissions.on(pp_dsl::permission_id.eq(p_dsl::id)))
-        .filter(pp_dsl::rbac_id.eq(r_id))
-        .filter(p_dsl::path.eq(permission_path))
-        .select(p_dsl::id)
-        .first::<i32>(&mut connection)
-        .optional()
-        .map(|opt| opt.is_some())
-        .map_err(|e| format!("Failed to check user permissions: {}", e))?;
-
-
-
-    if has_user_permission {
-        return Ok(true);
-    }
-
     // Check role-based permissions
-    let has_role_permission: bool = ra_dsl::role_assignments
+    let role_permissions: Vec<String> = ra_dsl::role_assignments
         .inner_join(rp_dsl::role_permissions.on(ra_dsl::role_id.eq(rp_dsl::role_id)))
         .inner_join(p_dsl::permissions.on(rp_dsl::permission_id.eq(p_dsl::id)))
         .filter(ra_dsl::rbac_id.eq(r_id))
-        .filter(p_dsl::path.eq(permission_path))
-        .select(p_dsl::id)
-        .limit(1)
-        .first::<i32>(&mut connection)
-        .optional()
-        .map(|opt| opt.is_some())
-        .map_err(|e| format!("Failed to check role permissions: {}", e))?;
+        .select(p_dsl::path)
+        .load(&mut connection)
+        .map_err(|e| format!("Failed to fetch role permissions: {}", e))?;
+
+    let has_role_permission = role_permissions
+        .iter()
+        .any(|path| matches_permission_path(path, permission_path));
 
     Ok(has_role_permission)
 }

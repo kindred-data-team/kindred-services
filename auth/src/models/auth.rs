@@ -9,7 +9,7 @@ use crate::schema::sessions;
 pub struct NewSession {
     pub expires_at: NaiveDateTime,
     pub rbac_id: Uuid,
-    pub user_id: i32,
+    pub auth_user_id: i32,
     pub access_token: String
 }
 
@@ -21,7 +21,7 @@ pub struct Session {
     pub updated_at: NaiveDateTime, 
     pub revoked: bool,
     pub rbac_id: Uuid,
-    pub user_id: i32,
+    pub auth_user_id: i32,
     pub access_token: Option<String>
 }
 

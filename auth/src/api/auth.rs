@@ -1,11 +1,15 @@
-use actix_web::{web, HttpResponse, Responder, HttpRequest};
-use crate::laravel::auth::login_laravel;
-use crate::helper::helper::{registration_process, request_validator};
-use crate::laravel::profile::sync_user;
-use crate::models::response::{ApiResponse, LoginResponse};
-use crate::models::users::{NewUser, NewUserRequest, UserLoginRequest};
-use crate::repository::auth::{fetch_sessions, get_user_login};
+use actix_web::http::StatusCode;
+use serde_json::Value;
 use validator::Validate;
+use actix_web::{web, HttpResponse, Responder, HttpRequest};
+
+use crate::repository::laravel::handler::handle_laravel_request;
+use crate::repository::laravel::profile::sync_user;
+use crate::repository::postgres::auth::{fetch_sessions, get_new_session, get_user_login};
+use crate::utils::helper::{extract_session_id, registration_process, request_validator};
+use crate::models::laravel::{LaravelRegisterLoginRefreshResponse, ResetPasswordResponse};
+use crate::models::response::{ApiResponse, LoginResponse, ResetResponse};
+use crate::models::users::{NewUser, NewUserRequest, ResetPasswordRequest, SocialLoginRequest, UserLoginRequest};
 
 pub async fn get_session(req: HttpRequest) -> impl Responder {
     if let Err(e) = request_validator(req) {
@@ -17,75 +21,165 @@ pub async fn get_session(req: HttpRequest) -> impl Responder {
     HttpResponse::Ok().json(result)
 }
 
-pub async fn register_user(req: web::Json<NewUserRequest>) -> impl Responder {
-    let request = req.into_inner();
-    // Validate the input
+//User registration
+pub async fn register_user(req: HttpRequest, body: Option<web::Json<Value>>) -> impl Responder {
+    let request_body = body.map(|b| b.into_inner()).unwrap_or_default();
+    let request: NewUserRequest = serde_json::from_str(&request_body.to_string()).unwrap();
     if let Err(errors) = request.validate() {
         return HttpResponse::BadRequest().json(errors.into_errors());
     }
+
+    let register_result = handle_laravel_request(None, req, request_body).await;
+    if let Err(e) = register_result {
+        return HttpResponse::build(StatusCode::from_u16(e.status).unwrap()).json(ApiResponse::new(&e.message));
+    }
+    let response = register_result.unwrap();
+    let json_resp: LaravelRegisterLoginRefreshResponse = serde_json::from_str(&response).unwrap();
 
     let new_user = NewUser {
-        first_name: request.first_name.clone(),
-        last_name: request.last_name.clone(),
         email: request.email.clone(),
-        password: request.password.clone()
     };
 
-    match registration_process(new_user) {
-        Ok(resp) => return resp,
-        Err(e) => return  e
+    if let Err(e) = registration_process(new_user, None) {
+        return  e;
     }
-
-    // Assign permission
-    // match assign_permission(rbac_id, default_role_id){
-    //     Ok(_) => HttpResponse::Ok().json(ApiResponse::new("User Registered!")),
-    //     Err(e) => HttpResponse::BadRequest().json(ApiResponse::new(&e))
-    // }
-    
+    let login_request = UserLoginRequest {
+        email: request.email
+    };
+    match get_user_login(&login_request, &json_resp.access_token){
+        Ok(session_id) => return HttpResponse::Ok().json(LoginResponse::new(session_id, json_resp.access_token, json_resp.token_type, json_resp.expires_in)),
+        Err(e) => return HttpResponse::BadRequest().json(ApiResponse::new(&e))
+    }
 }
 
-pub async fn login_user(req: web::Json<UserLoginRequest>) -> impl Responder {
-    let request = req.into_inner();
-
-    // Validate the input
+//User login
+pub async fn login_user(req: HttpRequest, body: Option<web::Json<Value>>) -> impl Responder {
+    let request_body = body.map(|b| b.into_inner()).unwrap_or_default();
+    let request: UserLoginRequest = serde_json::from_str(&request_body.to_string()).unwrap();
+    
     if let Err(errors) = request.validate() {
         return HttpResponse::BadRequest().json(errors.into_errors());
-    };
+    }
 
     // Login on laravel
-    let login_result = login_laravel(&request).await;
+    let login_result = handle_laravel_request(None, req, request_body).await;
     if let Err(e) = login_result {
-        return HttpResponse::BadRequest().json(e.to_string());
+        return HttpResponse::build(StatusCode::from_u16(e.status).unwrap()).json(ApiResponse::new(&e.message));
     }
     let response = login_result.unwrap();
+    let json_resp: LaravelRegisterLoginRefreshResponse = serde_json::from_str(&response).unwrap();
 
     // Login on rust auth-service
-    let login_request = get_user_login(&request, &response.access_token);
+    let login_request = get_user_login(&request, &json_resp.access_token);
     if let Err(e) = login_request.clone() {
         //Check if account exists in laravel and sync if existing
-        if !response.access_token.is_empty() {
-        match sync_user(&response.access_token, &request).await {
+        if !json_resp.access_token.is_empty() {
+        match sync_user(&json_resp.access_token, Some(&request)).await {
             Ok(_) => {
-                match get_user_login(&request, &response.access_token){
-                    Ok(session_id) => return HttpResponse::Ok().json(LoginResponse::new(session_id, response.access_token, response.token_type, response.expires_in)),
+                match get_user_login(&request, &json_resp.access_token){
+                    Ok(session_id) => return HttpResponse::Ok().json(LoginResponse::new(session_id, json_resp.access_token, json_resp.token_type, json_resp.expires_in)),
                     Err(e) => return HttpResponse::BadRequest().json(ApiResponse::new(&e))
                 }
             },
             Err(e) => return e
         }
-    } else {
-        return HttpResponse::BadRequest().json(ApiResponse::new(&e));
+        } else {
+            return HttpResponse::BadRequest().json(ApiResponse::new(&e));
+        }
+    } else if let Ok(session_id) = login_request {
+        return HttpResponse::Ok().json(LoginResponse::new(session_id, json_resp.access_token, json_resp.token_type, json_resp.expires_in))
     }
-} else if let Ok(session_id) = login_request {
-    return HttpResponse::Ok().json(LoginResponse::new(session_id, response.access_token, response.token_type, response.expires_in))
-}
 return HttpResponse::BadRequest().json(ApiResponse::new("Failed to login user."));
+    
+}
 
+//Refresh user token
+pub async fn refresh_token(req: HttpRequest, body: Option<web::Json<Value>>) -> impl Responder {
+    let validated_request = request_validator(req.clone());
+    if let Err(e) = validated_request {
+        return e;
+    }
+    let old_token = validated_request.unwrap();
 
-    // match get_user_login(&request, &response.access_token){
-    //     Ok(session_id) => HttpResponse::Ok().json(LoginResponse::new(session_id, response.access_token, response.token_type, response.expires_in)),
-    //     Err(e) => HttpResponse::BadRequest().json(ApiResponse::new(&e))
-    // }
+    let extract_call = extract_session_id(&req);
+    if let Err(e) = extract_call {
+        return e;
+    }
+    let session_id = extract_call.unwrap();
 
+    let request_body = body.map(|b| b.into_inner()).unwrap_or_default();
+
+    // Refresh token on laravel
+    let refresh_result = handle_laravel_request(Some(old_token), req, request_body).await;
+    if let Err(e) = refresh_result {
+        return HttpResponse::build(StatusCode::from_u16(e.status).unwrap()).json(ApiResponse::new(&e.message));
+    }
+    let response = refresh_result.unwrap();
+    let json_resp: LaravelRegisterLoginRefreshResponse = serde_json::from_str(&response).unwrap();
+
+    // Refresh token on rust auth-service
+    match get_new_session(&session_id, &json_resp.access_token) {
+        Ok(session_id) => HttpResponse::Ok().json(LoginResponse::new(session_id, json_resp.access_token, json_resp.token_type, json_resp.expires_in)),
+        Err(e) => HttpResponse::InternalServerError().json(ApiResponse::new(&e))
+    }
+
+}
+
+//User login using social provider
+pub async fn social_login(req: HttpRequest, body: Option<web::Json<Value>>) -> impl Responder {
+    let request_body = body.map(|b| b.into_inner()).unwrap_or_default();
+    let request: SocialLoginRequest = serde_json::from_str(&request_body.to_string()).unwrap();
+
+    if let Err(errors) = request.validate() {
+        return HttpResponse::BadRequest().json(errors.into_errors());
+    }
+
+    // Login on laravel
+    let login_result = handle_laravel_request(None, req, request_body).await;
+    if let Err(e) = login_result {
+        return HttpResponse::build(StatusCode::from_u16(e.status).unwrap()).json(ApiResponse::new(&e.message));
+    }
+    let response = login_result.unwrap();
+    let json_resp: LaravelRegisterLoginRefreshResponse = serde_json::from_str(&response).unwrap();
+
+    // Login on rust auth-service
+    match sync_user(&json_resp.access_token, None).await {
+        Ok(email) => {
+            match get_user_login(&UserLoginRequest{email}, &json_resp.access_token){
+                Ok(session_id) => return HttpResponse::Ok().json(LoginResponse::new(session_id, json_resp.access_token, json_resp.token_type, json_resp.expires_in)),
+                Err(e) => return HttpResponse::BadRequest().json(ApiResponse::new(&e))
+            }
+        },
+        Err(e) => return e
+    }
+    
+}
+
+//Reset password
+pub async fn reset_password(req: HttpRequest, body: Option<web::Json<Value>>) -> impl Responder {
+    let request_body = body.map(|b| b.into_inner()).unwrap_or_default();
+    let request: ResetPasswordRequest = serde_json::from_str(&request_body.to_string()).unwrap();
+
+    if let Err(errors) = request.validate() {
+        return HttpResponse::BadRequest().json(errors.into_errors());
+    }
+
+    // Reset password on laravel
+    let reset_pass_result = handle_laravel_request(None, req, request_body).await;
+    if let Err(e) = reset_pass_result {
+        return HttpResponse::build(StatusCode::from_u16(e.status).unwrap()).json(ApiResponse::new(&e.message));
+    }
+    let response = reset_pass_result.unwrap();
+    let json_resp: ResetPasswordResponse = serde_json::from_str(&response).unwrap();
+
+    let login_request = UserLoginRequest {
+        email: request.email
+    };
+
+    // Get session from auth-service
+    match get_user_login(&login_request, &json_resp.token){
+        Ok(session_id) => return HttpResponse::Ok().json(ResetResponse::new(session_id, json_resp.token)),
+        Err(e) => return HttpResponse::BadRequest().json(ApiResponse::new(&e))
+    }
     
 }

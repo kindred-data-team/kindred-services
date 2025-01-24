@@ -2,8 +2,8 @@ use anyhow::Result;
 use uuid::Uuid;
 use diesel::prelude::*;
 
+use crate::models::rbac::{MyField, NewPermission, NewRole, NewRoleAssignment, NewRolePermission, Permission, RBACRequest, RBACResult, Role, RoleAssignment, RolePermission};
 use crate::db::db::establish_connection;
-use crate::models::rbac::{MyField, NewPermission, NewRole, NewRoleAssignment, NewRolePermission, Permission, ProfilePermission, RBACRequest, RBACResult, Role, RoleAssignment, RolePermission};
 
 pub fn get_permission(mut connection: PgConnection, id: i32) -> Result<Permission, String>{
     use crate::schema::permissions::dsl as p_dsl;
@@ -31,7 +31,7 @@ pub fn insert_permission(mut connection: PgConnection, req: NewPermission) -> Re
 
     let new_permission = diesel::insert_into(p_dsl::permissions)
         .values(&req)
-        .returning((p_dsl::id, p_dsl::path, p_dsl::created_at, p_dsl::updated_at))
+        .returning((p_dsl::id, p_dsl::path, p_dsl::is_private, p_dsl::created_at, p_dsl::updated_at))
         .get_result::<Permission>(&mut connection)
         .map_err(|e| format!("Failed to insert new permission: {}", e))?;
 
@@ -42,7 +42,7 @@ pub fn delete_permission(mut connection: PgConnection, id: i32) -> Result<Permis
     use crate::schema::permissions::dsl as p_dsl;
 
     let permission: Permission = diesel::delete(p_dsl::permissions.filter(p_dsl::id.eq(id)))
-        .returning((p_dsl::id, p_dsl::path, p_dsl::created_at, p_dsl::updated_at))
+        .returning((p_dsl::id, p_dsl::path, p_dsl::is_private, p_dsl::created_at, p_dsl::updated_at))
         .get_result::<Permission>(&mut connection)
         .map_err(|e| format!("Failed to delete permission: {}", e))?;
 
@@ -162,17 +162,6 @@ pub fn delete_role_assignment(mut connection: PgConnection, id: Uuid) -> Result<
     Ok(role_assignment)
 }
 
-pub fn get_profile_permissions(mut connection: PgConnection, id: Uuid) -> Result<Vec<ProfilePermission>, String>{
-    use crate::schema::profile_permissions::dsl as pp_dsl;
-
-    let profile_permissions: Vec<ProfilePermission> = pp_dsl::profile_permissions
-        .filter(pp_dsl::rbac_id.eq(id))
-        .load::<ProfilePermission>(&mut connection)
-        .map_err(|e| format!("Failed to fetch permission: {}", e))?;
-
-    Ok(profile_permissions)
-}
-
 pub fn rbac_db(rbac_request: RBACRequest) -> Result<RBACResult, String> {
     let connection = establish_connection();
 
@@ -229,19 +218,9 @@ pub fn rbac_db(rbac_request: RBACRequest) -> Result<RBACResult, String> {
                 return Err("Invalid request".to_string())
             }
         },
-        "get-profile-permissions" => {
-            if let Some(MyField::RBACId(request)) = rbac_request.request {
-                match get_profile_permissions(connection, request.rbac_id) {
-                    Ok(result) => return Ok(RBACResult::ProfilePermission(result)),
-                    Err(e) => return Err(e)
-                }
-            } else {
-                return Err("Invalid request".to_string())
-            }
-        },
         "add-permission" => {
             if let Some(MyField::RBACAddPermission(request)) = rbac_request.request {
-                let req = NewPermission { path: request.path };
+                let req = NewPermission { path: request.path, is_private: Some(request.is_private).unwrap() };
                 match insert_permission(connection, req) {
                     Ok(result) => return Ok(RBACResult::Permission(result)),
                     Err(e) => return Err(e)

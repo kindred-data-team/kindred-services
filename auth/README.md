@@ -16,12 +16,11 @@ This microservice is built with Rust, using the actix-web framework for handling
 │   ├── api/   
 │   ├── config/  
 │   ├── db/
-│   ├── helper/  
-│   ├── laravel/  
 │   ├── middleware/  
 │   ├── models/  
 │   ├── repository/  
 │   ├── routes/  
+│   ├── utils/  
 │   └── main.rs 
 │   └── schema.rs 
 ├── Cargo.toml 
@@ -30,12 +29,11 @@ This microservice is built with Rust, using the actix-web framework for handling
 - `api/`: Includes API-related logic and handlers.
 - `config/`: Manages application configuration.
 - `db/`: Contains database connection and setup logic.
-- `helper/`: Contains helper functions for specific tasks (password hashing, request validation, etc).
-- `laravel/`: Integration with kindred laravel APIs.
 - `middleware/`: Custom middleware for logging.
 - `models/`: Contains data models for the application.
-- `repository/`: Handles database interactions or data storage.
+- `repository/`: Handles database interactions or data storage and external API integration.
 - `routes/`: Defines the API routes (currently including vaccine-related routes).
+- `utils/`: Contains helper functions for specific tasks (password hashing, request validation, etc).
 - `main.rs`: Entry point that starts the HTTP server and sets up routes.
 - `schema.rs`: Contains database table schema.
 - `Cargo.toml`: Contains the list of dependencies used by the application.

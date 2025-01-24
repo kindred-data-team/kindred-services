@@ -1,6 +1,7 @@
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
 use crate::schema::{permissions, roles, role_permissions, role_assignments};
 
 #[derive(Insertable, Deserialize, Serialize)]
@@ -26,15 +27,17 @@ pub struct NewRoleAssignment {
 #[derive(Insertable, Deserialize, Serialize)]
 #[table_name = "permissions"]
 pub struct NewPermission {
-    pub path: String
+    pub path: String,
+    pub is_private: Option<bool>
 }
 
 #[derive(Queryable, Serialize, Deserialize)]
 pub struct Permission {
     pub id: i32,
     pub path: String,
+    pub is_private: bool,
     pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime
 }
 
 #[derive(Queryable, Serialize, Deserialize)]
@@ -89,7 +92,8 @@ pub struct RBACPermission {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RBACAddPermission {
-    pub path: String
+    pub path: String,
+    pub is_private: Option<bool>
 }
 
 #[derive(Serialize, Deserialize, Debug)]

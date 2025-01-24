@@ -3,7 +3,6 @@ extern crate diesel;
 
 use actix_web::{App, HttpServer};
 use crate::routes::auth::auth_routes;
-// use dotenv::dotenv;
 use crate::middleware::logger::Logger;
 
 mod models;
@@ -14,14 +13,10 @@ mod db;
 mod config;
 mod middleware;
 mod schema;
-mod helper;
-mod laravel;
-
+mod utils;
 
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    // dotenv().ok();
- 
+async fn main() -> std::io::Result<()> { 
     let host = config::config::get_host();
     let port = config::config::get_port();
 

@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Serialize)]
@@ -29,6 +29,27 @@ impl LoginResponse {
             access_token,
             token_type,
             expires_in
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ErrorResponse {
+    pub status: u16,
+    pub message: String
+}
+
+#[derive(Serialize)]
+pub struct ResetResponse {
+    pub session_id: Uuid,
+    pub access_token: String
+}
+
+impl ResetResponse {
+    pub fn new(session_id: Uuid, access_token: String) -> Self {
+        ResetResponse {
+            session_id,
+            access_token
         }
     }
 }

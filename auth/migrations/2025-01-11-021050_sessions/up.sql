@@ -4,8 +4,8 @@ CREATE TABLE sessions (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     revoked BOOLEAN NOT NULL DEFAULT FALSE,
-    rbac_id UUID NOT NULL REFERENCES rbac_profiles(id),
-    user_id SERIAL NOT NULL REFERENCES users(id),
+    rbac_id UUID NOT NULL REFERENCES rbac_profiles(id) ON DELETE CASCADE,
+    auth_user_id SERIAL NOT NULL REFERENCES auth_users(id) ON DELETE CASCADE,
     access_token TEXT
 );
 

@@ -1,38 +1,13 @@
 use actix_web::{HttpRequest, HttpResponse};
-use anyhow::Result;
-use argon2::{password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString}, Argon2};
 use chrono::{NaiveDateTime, Utc};
+use anyhow::Result;
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use crate::{models::users::NewUser, repository::auth::{user_has_permission, validate_session}};
+use crate::models::users::NewUser;
 use crate::models::response::ApiResponse;
-use crate::repository::auth::{assign_default_role, insert_rbac_profile, insert_user};
-
-
-pub fn hash_password(pass: &String) -> Result<String, argon2::password_hash::Error>{
-    let password = pass.as_bytes();
-    let salt = SaltString::generate(&mut OsRng);
-
-    // Argon2 with default params (Argon2id v19)
-    let argon2 = Argon2::default();
-
-    // Hash password to PHC string ($argon2id$v=19$...)
-    let password_hash = argon2.hash_password(password, &salt)?.to_string();
-
-    Ok(password_hash)
-}
-
-pub fn verif_pass(password: &str, password_hash: String) -> Result<(), String>{
-    let parsed_hash = PasswordHash::new(&password_hash).unwrap();
-
-    let argon2 = Argon2::default();
-
-    match argon2.verify_password(password.as_bytes(), &parsed_hash) {
-        Ok(_) => Ok(()),
-        Err(_) => Err("Incorrect password!".to_string()),
-    }
-}
+use crate::repository::postgres::auth::{assign_default_role, insert_rbac_profile, insert_user, user_has_permission, validate_session};
+use crate::config::config::get_default_role;
 
 pub fn validate_expiration (expires_at: NaiveDateTime) -> Result<(), String>{
     let current_date:NaiveDateTime = Utc::now().naive_local();
@@ -55,10 +30,8 @@ fn extract_headers(req: &HttpRequest) -> Result<HashMap<String, String>, String>
 
     headers
 }
-pub fn request_validator (req: HttpRequest) -> Result<String, HttpResponse> {
-    // Get the path called
-    let path = req.path();
 
+pub fn extract_session_id(req: &HttpRequest) -> Result<Uuid, HttpResponse> {
     // Get the headers
     let extract_headers_result = extract_headers(&req);
     if let Err(e) = extract_headers_result {
@@ -80,7 +53,19 @@ pub fn request_validator (req: HttpRequest) -> Result<String, HttpResponse> {
         return Err(HttpResponse::Unauthorized().json(ApiResponse::new(&format!("Failed to parse Uuid: {}", e))));
     }
     let session_id = parse_uuid.unwrap();
+    Ok(session_id)
+}
 
+pub fn request_validator (req: HttpRequest) -> Result<String, HttpResponse> {
+    // Get the path called
+    let path = req.path();
+
+    // Get session_id from headers
+    let extract_call = extract_session_id(&req);
+    if let Err(e) = extract_call {
+        return Err(e);
+    }
+    let session_id = extract_call.unwrap();
 
     let permission_check = user_has_permission(session_id, path);
 
@@ -96,7 +81,21 @@ pub fn request_validator (req: HttpRequest) -> Result<String, HttpResponse> {
     }
 }
 
-pub fn registration_process (req: NewUser) -> Result<HttpResponse, HttpResponse> {
+pub fn matches_permission_path(permission_path: &str, requested_path: &str) -> bool {
+    if permission_path.ends_with("/*") {
+        // Wildcard match: check if the requested path starts with the prefix
+        let prefix = &permission_path[..permission_path.len() - 1];
+        requested_path.starts_with(prefix)
+    } else if permission_path.contains("{}"){
+        let regex_path = regex::escape(permission_path).replace(r"\{\}", r"\d+");
+        let re = regex::Regex::new(&format!("^{}$", regex_path)).unwrap();
+        re.is_match(requested_path)
+    } else {
+        permission_path == requested_path
+    }
+}
+
+pub fn registration_process (req: NewUser, role: Option<i32>) -> Result<HttpResponse, HttpResponse> {
     let rbac_id = match insert_user(&req) {
         Ok(id) => id,
         Err(e) => return Err(HttpResponse::InternalServerError().json(ApiResponse::new(&e)))
@@ -108,36 +107,9 @@ pub fn registration_process (req: NewUser) -> Result<HttpResponse, HttpResponse>
     }
 
     // Assign default role
-    let default_role_id = 2; // Default role 'regular'
+    let default_role_id = role.unwrap_or(get_default_role());
     match assign_default_role(rbac_id, default_role_id){
         Ok(_) => Ok(HttpResponse::Ok().json(ApiResponse::new("User Registered!"))),
         Err(e) => Err(HttpResponse::BadRequest().json(ApiResponse::new(&e)))
     }
 }
-
-// pub fn check_resource_access(rbac_id: &str, resource_scope: &str) -> bool {
-//     if let Some(profile) = self.users.get(rbac_id) {
-//         if profile.denied_permissions.contains(resource_scope) {
-//             return false;
-//         }
-
-//         if profile.direct_permissions.contains(resource_scope) {
-//             return true;
-//         }
-
-//         for role_name in &profile.roles {
-//             if let Some(role) = self.roles.get(role_name) {
-//                 if role.permissions.contains(resource_scope) {
-//                     return true;
-//                 }
-
-//                 for permission in &role.permissions {
-//                     if permission.ends_with("*") && resource_scope.starts_with(permission.trim_end_matches('*')) {
-//                         return true;
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//     false
-// }
