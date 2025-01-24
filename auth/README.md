@@ -20,6 +20,7 @@ This microservice is built with Rust, using the actix-web framework for handling
 │   ├── models/  
 │   ├── repository/  
 │   ├── routes/  
+│   ├── seeders/  
 │   ├── utils/  
 │   └── main.rs 
 │   └── schema.rs 
@@ -33,6 +34,7 @@ This microservice is built with Rust, using the actix-web framework for handling
 - `models/`: Contains data models for the application.
 - `repository/`: Handles database interactions or data storage and external API integration.
 - `routes/`: Defines the API routes (currently including vaccine-related routes).
+- `seeders/`: Contains function to seed initial data to the database.
 - `utils/`: Contains helper functions for specific tasks (password hashing, request validation, etc).
 - `main.rs`: Entry point that starts the HTTP server and sets up routes.
 - `schema.rs`: Contains database table schema.
